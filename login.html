@@ -264,22 +264,50 @@ function togglePw(id, btn) {
   el.type = el.type === 'password' ? 'text' : 'password';
   btn.textContent = el.type === 'password' ? '👁' : '🙈';
 }
-function doLogin() {
+async function doLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pw').value;
   let ok = true;
+  
   if (!u) { document.getElementById('err-user').classList.add('show'); ok = false; }
-  else     { document.getElementById('err-user').classList.remove('show'); }
+  else    { document.getElementById('err-user').classList.remove('show'); }
   if (!p) { document.getElementById('err-pw').classList.add('show'); ok = false; }
   else    { document.getElementById('err-pw').classList.remove('show'); }
+  
   if (!ok) return;
-  // Demo: admin credentials
-  if ((u === 'admin' || u === 'quan.ly@hygge.vn') && p === 'Admin123') {
-    window.location.href = 'manager.html';
-  } else if ((u === 'nv01' || u === 'nv@hygge.vn') && p === 'Nv12345!') {
-    window.location.href = 'employee.html';
-  } else {
-    document.getElementById('login-error').classList.add('show');
+
+  try {
+      // 1. GỌI API THẬT ĐẾN BACKEND CỦA BẠN (Cổng 3000)
+      const response = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+          // 2. Đăng nhập thành công -> Lưu vé (token) và thông tin nhân viên
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('role', data.user.role);
+          localStorage.setItem('userId', data.user.id);
+          localStorage.setItem('userName', data.user.name);
+
+          // 3. Điều hướng ĐÚNG đường dẫn file HTML mới
+          if (data.user.role === 'Manager') {
+              window.location.href = './frontend/manager/manager.html'; 
+          } else {
+              window.location.href = './frontend/employee/employee.html';
+          }
+      } else {
+          // Báo lỗi khi sai mật khẩu hoặc sai tài khoản
+          const errorBox = document.getElementById('login-error');
+          errorBox.textContent = data.message;
+          errorBox.classList.add('show');
+      }
+  } catch (err) {
+      console.error(err);
+      alert('Lỗi: Không thể kết nối đến máy chủ Backend. Hãy chắc chắn Terminal Node.js vẫn đang chạy!');
   }
 }
 function sendOTP() {
