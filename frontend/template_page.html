@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Đăng ký ca làm</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+  <!-- Lớp phủ khi mở sidebar trên mobile -->
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+
+    <!-- Sidebar được renderSidebar() đổ vào đây -->
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+
+      <!-- Header được renderHeader() đổ vào đây -->
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+        <!-- ====== NỘI DUNG RIÊNG CỦA TỪNG TRANG BẮT ĐẦU TỪ ĐÂY ====== -->
+
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <h2 class="card-title" style="margin:0;">Tuần hiện tại</h2>
+          </div>
+        </div>
+
+        <div class="card">
+          Nội dung trang Đăng ký ca làm...
+        </div>
+
+        <!-- ====== HẾT PHẦN NỘI DUNG RIÊNG ====== -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Side overlay dùng chung cho side-panel (nếu trang có form trượt) -->
+  <div class="side-overlay" id="side-overlay"></div>
+
+  <script src="/js/shared.js"></script>
+  <!-- <script src="/js/utils.js"></script>-->
+  <script>
+    // requiredRoles = ['nhanvien'] cho trang nhân viên,
+    // ['quanly'] cho trang quản lý.
+    initLayout(['nhanvien']).then(user => {
+      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+
+      // TODO: gọi API riêng của trang này, ví dụ:
+      // const res = await fetch('/api/lichlam/tuan');
+      // ...render lưới lịch...
+    });
+  </script>
+</body>
+</html>

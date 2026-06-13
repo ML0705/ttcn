@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Dashboard</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+ 
+  <!-- Lớp phủ khi mở sidebar trên mobile -->
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+ 
+  <div class="app-shell">
+ 
+    <!-- Sidebar được renderSidebar() đổ vào đây -->
+    <aside class="sidebar" id="sidebar-root"></aside>
+ 
+    <div class="main">
+ 
+      <!-- Header được renderHeader() đổ vào đây -->
+      <header class="header" id="header-root"></header>
+ 
+      <main class="content">
+ 
+        <!-- ====================================================
+             1) LỜI CHÀO + NGÀY GIỜ
+        ==================================================== -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="flex justify-between items-center" style="flex-wrap: wrap; gap: 16px;">
+            <div>
+              <div style="font-size: 18px; font-weight: 700;" id="dash-greeting">Xin chào 👋</div>
+              <div class="text-sm text-muted" style="margin-top: 4px;">Chúc bạn một ngày làm việc hiệu quả!</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="text-sm text-muted" id="dash-date">--</div>
+              <div style="font-size: 20px; font-weight: 700;" id="dash-day">--</div>
+            </div>
+          </div>
+        </div>
+ 
+        <!-- ====================================================
+             2) CA LÀM HÔM NAY + CHẤM CÔNG HÔM NAY
+        ==================================================== -->
+        <div class="form-row" style="margin-bottom: 20px;">
+ 
+          <!-- Ca làm hôm nay -->
+          <div class="card">
+            <div class="card-title">Ca làm hôm nay</div>
+            <div class="flex items-center gap-8" style="margin-bottom: 10px;">
+              <span class="badge badge-green" id="dash-shift-name">Ca sáng</span>
+              <span class="text-sm text-muted" id="dash-shift-time">08:00 – 12:00</span>
+            </div>
+            <div class="text-sm text-muted" style="margin-bottom: 18px;" id="dash-branch">📍 Cửa hàng Hà Nội</div>
+            <a class="btn btn-primary" style="width: 100%; justify-content: center;" href="chamcong.html">
+              Chấm công ngay
+            </a>
+          </div>
+ 
+          <!-- Chấm công hôm nay -->
+          <div class="card">
+            <div class="card-title">Chấm công hôm nay</div>
+            <div class="form-row" style="margin-bottom: 14px;">
+              <div>
+                <div class="stat-label">Check-in</div>
+                <div class="stat-value" style="color: var(--accent);" id="dash-checkin">07:58</div>
+                <span class="badge badge-green">Đúng giờ</span>
+              </div>
+              <div>
+                <div class="stat-label">Check-out</div>
+                <div class="stat-value text-muted" id="dash-checkout">--:--</div>
+                <span class="badge badge-gray">Chưa ra</span>
+              </div>
+            </div>
+            <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+              <div class="text-sm text-muted" style="margin-bottom: 6px;">Thông báo</div>
+              <div class="text-sm" style="line-height: 1.6;" id="dash-notif-list">
+                🔔 Ca sáng ngày mai của bạn đã được duyệt.<br>
+                📅 Hạn đăng ký ca làm tuần sau còn 2 ngày.
+              </div>
+            </div>
+          </div>
+        </div>
+ 
+        <!-- ====================================================
+             3) LỐI TẮT
+        ==================================================== -->
+        <div class="card">
+          <div class="card-title">Lối tắt</div>
+          <div class="shortcut-grid">
+            <a class="shortcut-item" href="chamcong.html">
+              <div class="s-icon">✅</div>
+              <div>
+                <div class="s-title">Chấm công</div>
+                <div class="s-desc">Check-in / Check-out ca làm hôm nay</div>
+              </div>
+            </a>
+            <a class="shortcut-item" href="dangky.html">
+              <div class="s-icon">📅</div>
+              <div>
+                <div class="s-title">Đăng ký ca làm</div>
+                <div class="s-desc">Xem & đăng ký lịch làm tuần tới</div>
+              </div>
+            </a>
+            <a class="shortcut-item" href="lichsu.html">
+              <div class="s-icon">📋</div>
+              <div>
+                <div class="s-title">Lịch sử chấm công</div>
+                <div class="s-desc">Xem lịch sử & tổng giờ làm</div>
+              </div>
+            </a>
+            <div class="shortcut-item" style="cursor: default;">
+              <div class="s-icon">👤</div>
+              <div>
+                <div class="s-title">Hồ sơ cá nhân</div>
+                <div class="s-desc">Xem & cập nhật thông tin cá nhân</div>
+              </div>
+            </div>
+          </div>
+        </div>
+ 
+      </main>
+    </div>
+  </div>
+ 
+  <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
+  <div class="side-overlay" id="side-overlay"></div>
+ 
+  <script src="../js/shared.js"></script>
+  <!-- <script src="../js/utils.js"></script> -->
+  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi có API, thay phần dữ liệu mock
+       trong initDashboard() bằng apiFetch('/dashboard/...') -->
+  <script>
+    initLayout(['nhanvien']).then(user => {
+      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+ 
+      initDashboard(user);
+    });
+ 
+    /* ===== Khởi tạo dữ liệu trang Dashboard ===== */
+    function initDashboard(user) {
+      // Lời chào
+      const hoten = user?.hoten || 'bạn';
+      document.getElementById('dash-greeting').textContent = `Xin chào, ${hoten} 👋`;
+ 
+      // Ca làm hôm nay (mock)
+      const todayShift = { name: 'Ca sáng', time: '08:00 – 12:00', branch: '📍 Cửa hàng Hà Nội' };
+      document.getElementById('dash-shift-name').textContent = todayShift.name;
+      document.getElementById('dash-shift-time').textContent = todayShift.time;
+      document.getElementById('dash-branch').textContent = todayShift.branch;
+ 
+      // Chấm công hôm nay (mock)
+      document.getElementById('dash-checkin').textContent = '07:58';
+      document.getElementById('dash-checkout').textContent = '--:--';
+ 
+      // Ngày / giờ hiện tại
+      updateDashboardClock();
+      setInterval(updateDashboardClock, 1000 * 30);
+    }
+ 
+    /* ===== Cập nhật ngày / thứ hiện tại ===== */
+    function updateDashboardClock() {
+      const now = new Date();
+      const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+      document.getElementById('dash-date').textContent = now.toLocaleDateString('vi-VN');
+      document.getElementById('dash-day').textContent = days[now.getDay()];
+    }
+  </script>
+</body>
+</html>

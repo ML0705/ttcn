@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Chấm công</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+
+  <!-- Lớp phủ khi mở sidebar trên mobile -->
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+
+    <!-- Sidebar được renderSidebar() đổ vào đây -->
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+
+      <!-- Header được renderHeader() đổ vào đây -->
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+        <!-- ====================================================
+             1) THỐNG KÊ THÁNG NÀY
+        ==================================================== -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Số ngày làm tháng này</div>
+            <div class="stat-value" id="stat-worked-days">--</div>
+            <div class="stat-sub" id="stat-expected-days">/ -- ngày dự kiến</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Số giờ làm tháng này</div>
+            <div class="stat-value" id="stat-total-hours">--</div>
+            <div class="stat-sub">giờ</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Số lần đi muộn</div>
+            <div class="stat-value" id="stat-late-count">--</div>
+            <div class="stat-sub">lần trong tháng</div>
+          </div>
+        </div>
+
+        <!-- ====================================================
+             2) CA LÀM HÔM NAY
+        ==================================================== -->
+        <div class="card">
+
+          <!-- Tiêu đề + trạng thái ca -->
+          <div class="page-bar" style="margin-bottom: 18px;">
+            <div class="page-bar-left">
+              <h2 class="card-title" style="margin:0">Ca làm hôm nay</h2>
+            </div>
+            <div class="page-bar-right">
+              <span class="badge badge-green" id="shift-status-badge">Đang trong ca</span>
+            </div>
+          </div>
+
+          <!-- Thông tin ca: tên ca / giờ bắt đầu / giờ kết thúc -->
+          <div class="flex justify-between gap-16" style="flex-wrap: wrap; margin-bottom: 24px;">
+            <div>
+              <div class="stat-label">Tên ca</div>
+              <div class="stat-value" id="shift-name" style="font-size: 16px;">--</div>
+            </div>
+            <div>
+              <div class="stat-label">Giờ bắt đầu</div>
+              <div class="stat-value" id="shift-start" style="font-size: 16px;">--:--</div>
+            </div>
+            <div>
+              <div class="stat-label">Giờ kết thúc</div>
+              <div class="stat-value" id="shift-end" style="font-size: 16px;">--:--</div>
+            </div>
+          </div>
+
+          <!-- Thanh tiến trình: Check-in -> Hiện tại -> Check-out -->
+          <div class="flex items-center justify-between" style="margin-bottom: 24px; padding: 0 8px;">
+
+            <!-- Điểm Check-in -->
+            <div class="flex flex-col items-center gap-8">
+              <div id="tl-dot-checkin" style="width:12px; height:12px; border-radius:50%; background: var(--accent);"></div>
+              <div class="text-sm fw-600" id="tl-checkin-time">--:--</div>
+              <div class="text-muted text-sm">Check-in</div>
+            </div>
+
+            <div id="tl-line-left" style="flex:1; height:2px; background: var(--accent); margin: 0 8px;"></div>
+
+            <!-- Điểm hiện tại / trạng thái -->
+            <div class="flex flex-col items-center gap-8">
+              <div id="tl-dot-current" style="width:12px; height:12px; border-radius:50%; background: var(--accent);"></div>
+              <div class="text-sm fw-600" id="tl-current-label" style="color: var(--accent);">Đang làm</div>
+              <div class="text-muted text-sm" id="tl-current-sub">Hiện tại</div>
+            </div>
+
+            <div id="tl-line-right" style="flex:1; height:2px; background: var(--border); margin: 0 8px;"></div>
+
+            <!-- Điểm Check-out -->
+            <div class="flex flex-col items-center gap-8">
+              <div id="tl-dot-checkout" style="width:12px; height:12px; border-radius:50%; border: 2px solid var(--border-strong); background: var(--surface);"></div>
+              <div class="text-sm fw-600" id="tl-checkout-time">--:--</div>
+              <div class="text-muted text-sm">Check-out</div>
+            </div>
+          </div>
+
+          <!-- Chi tiết Check-in / Check-out -->
+          <div class="form-row" style="margin-bottom: 20px;">
+            <div class="stat-card">
+              <div class="stat-label">Check-in</div>
+              <div id="ci-content">
+                <div class="stat-value" style="color: var(--accent);" id="ci-time-value">--:--</div>
+                <span class="badge" id="ci-status-badge"></span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Check-out</div>
+              <div id="co-content">
+                <div class="stat-value">--:--</div>
+                <span class="badge badge-gray">Chưa check-out</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nút hành động -->
+          <button class="btn btn-primary" id="btn-shift-action" style="width:100%; justify-content:center;" onclick="handleShiftAction()">
+            Check-out
+          </button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
+  <div class="side-overlay" id="side-overlay"></div>
+
+  <script src="../js/shared.js"></script>
+  <!-- <script src="../js/utils.js"></script> -->
+  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi API chấm công đã sẵn sàng,
+       thay phần dữ liệu mock trong initAttendancePage() bằng apiFetch('/chamcong/...') -->
+  <script>
+    initLayout(['nhanvien']).then(user => {
+      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+
+      initAttendancePage();
+    });
+
+    /* ===================================================================
+       DỮ LIỆU TRANG CHẤM CÔNG (MOCK)
+       - shiftState.status: 'in'  -> đang trong ca (chưa check-out)
+                             'done' -> đã hoàn thành ca
+       - Khi có API thật: lấy dữ liệu này từ /api/chamcong/hom-nay
+    =================================================================== */
+    let shiftState = {
+      status: 'in',
+      shift: { name: 'Ca sáng', start: '07:00', end: '12:00' },
+      checkIn: '07:04',
+      checkOut: null,
+      lateMinutes: 4,
+    };
+
+    function initAttendancePage() {
+      // Thống kê tháng này (mock)
+      const monthStats = {
+        workedDays: 14,
+        expectedDays: 20,
+        totalHours: 56,
+        lateCount: 1,
+      };
+      document.getElementById('stat-worked-days').textContent = monthStats.workedDays;
+      document.getElementById('stat-expected-days').textContent = `/ ${monthStats.expectedDays} ngày dự kiến`;
+      document.getElementById('stat-total-hours').textContent = monthStats.totalHours;
+      document.getElementById('stat-late-count').textContent = monthStats.lateCount;
+
+      renderShiftState();
+    }
+
+    /* ===== Render trạng thái ca làm hôm nay ===== */
+    function renderShiftState() {
+      const { shift, checkIn, checkOut, lateMinutes, status } = shiftState;
+
+      // Thông tin ca
+      document.getElementById('shift-name').textContent  = shift.name;
+      document.getElementById('shift-start').textContent = shift.start;
+      document.getElementById('shift-end').textContent   = shift.end;
+
+      // Thanh tiến trình
+      document.getElementById('tl-checkin-time').textContent  = checkIn || '--:--';
+      document.getElementById('tl-checkout-time').textContent = checkOut || shift.end;
+
+      const badge      = document.getElementById('shift-status-badge');
+      const btn        = document.getElementById('btn-shift-action');
+      const ciBadge    = document.getElementById('ci-status-badge');
+      const ciTimeEl   = document.getElementById('ci-time-value');
+      const coContent  = document.getElementById('co-content');
+      const dotCurrent = document.getElementById('tl-dot-current');
+      const dotCheckout = document.getElementById('tl-dot-checkout');
+      const lineRight  = document.getElementById('tl-line-right');
+      const curLabel   = document.getElementById('tl-current-label');
+      const curSub     = document.getElementById('tl-current-sub');
+
+      ciTimeEl.textContent = checkIn || '--:--';
+
+      // Badge trạng thái check-in (đúng giờ / muộn)
+      if (lateMinutes > 0) {
+        ciBadge.className = 'badge badge-amber';
+        ciBadge.textContent = `⚠ Muộn ${lateMinutes} phút`;
+      } else {
+        ciBadge.className = 'badge badge-green';
+        ciBadge.textContent = 'Đúng giờ';
+      }
+
+      if (status === 'in') {
+        // ----- Đang trong ca -----
+        badge.className = 'badge badge-green';
+        badge.textContent = 'Đang trong ca';
+
+        curLabel.textContent = 'Đang làm';
+        curLabel.style.color = 'var(--accent)';
+        curSub.textContent = 'Hiện tại';
+
+        coContent.innerHTML = `
+          <div class="stat-value">--:--</div>
+          <span class="badge badge-gray">Chưa check-out</span>`;
+
+        btn.textContent = `Check-out ${shift.name.toLowerCase()}`;
+        btn.disabled = false;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+
+      } else {
+        // ----- Đã hoàn thành ca -----
+        badge.className = 'badge badge-blue';
+        badge.textContent = 'Đã hoàn thành';
+
+        curLabel.textContent = 'Hoàn thành';
+        curLabel.style.color = 'var(--ink-muted)';
+        curSub.textContent = '';
+
+        // Nối thanh tiến trình + tô điểm check-out
+        lineRight.style.background = 'var(--accent)';
+        dotCurrent.style.background = 'var(--ink-muted)';
+        dotCheckout.style.background = 'var(--accent)';
+        dotCheckout.style.border = 'none';
+
+        coContent.innerHTML = `
+          <div class="stat-value" style="color: var(--accent);">${checkOut}</div>
+          <span class="badge badge-green">Đã check-out</span>`;
+
+        btn.textContent = 'Đã hoàn thành ca';
+        btn.disabled = true;
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-success');
+      }
+    }
+
+    /* ===== Xử lý nút Check-out =====
+       TODO Giai đoạn 3: gọi apiFetch('/chamcong/check-out', 'POST') tại đây
+       thay cho việc cập nhật state cục bộ. */
+    function handleShiftAction() {
+      if (shiftState.status !== 'in') return;
+
+      const now = new Date();
+      const hm = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+      shiftState.status = 'done';
+      shiftState.checkOut = hm;
+
+      renderShiftState();
+      showToast(`Check-out thành công lúc ${hm}!`);
+    }
+  </script>
+</body>
+</html>
