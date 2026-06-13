@@ -38,3 +38,5 @@ node server.js
 
 Thấy "Kết nối SQL Server thành công" là xong.
 
+## ĐỂ KẾT NỐI DATABASE THÌ KHẢ NĂNG PHẢI SỬA CẢ DB.JS NỮA, NMA NẾU MN SỬA DB.JS THÌ BẢO GITIGNORE NÓ ĐI NHÉ, KO ĐẾN LÚC PULL VỀ GHI ĐÈ FILE DB CỦA NHAU LẠI KO KẾT NỐI ĐC DATABASE
+## MK ở DATABASE T MÃ HÓA RỒI NHÉ
