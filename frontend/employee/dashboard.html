@@ -7,22 +7,22 @@
   <link rel="stylesheet" href="../css/main.css" />
 </head>
 <body>
- 
+
   <!-- Lớp phủ khi mở sidebar trên mobile -->
   <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
- 
+
   <div class="app-shell">
- 
+
     <!-- Sidebar được renderSidebar() đổ vào đây -->
     <aside class="sidebar" id="sidebar-root"></aside>
- 
+
     <div class="main">
- 
+
       <!-- Header được renderHeader() đổ vào đây -->
       <header class="header" id="header-root"></header>
- 
+
       <main class="content">
- 
+
         <!-- ====================================================
              1) LỜI CHÀO + NGÀY GIỜ
         ==================================================== -->
@@ -38,12 +38,12 @@
             </div>
           </div>
         </div>
- 
+
         <!-- ====================================================
              2) CA LÀM HÔM NAY + CHẤM CÔNG HÔM NAY
         ==================================================== -->
         <div class="form-row" style="margin-bottom: 20px;">
- 
+
           <!-- Ca làm hôm nay -->
           <div class="card">
             <div class="card-title">Ca làm hôm nay</div>
@@ -56,7 +56,7 @@
               Chấm công ngay
             </a>
           </div>
- 
+
           <!-- Chấm công hôm nay -->
           <div class="card">
             <div class="card-title">Chấm công hôm nay</div>
@@ -81,7 +81,7 @@
             </div>
           </div>
         </div>
- 
+
         <!-- ====================================================
              3) LỐI TẮT
         ==================================================== -->
@@ -118,14 +118,14 @@
             </div>
           </div>
         </div>
- 
+
       </main>
     </div>
   </div>
- 
+
   <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
   <div class="side-overlay" id="side-overlay"></div>
- 
+
   <script src="../js/shared.js"></script>
   <!-- <script src="../js/utils.js"></script> -->
   <!-- TODO Giai đoạn 3: bỏ comment utils.js khi có API, thay phần dữ liệu mock
@@ -133,31 +133,31 @@
   <script>
     initLayout(['nhanvien']).then(user => {
       if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
- 
+
       initDashboard(user);
     });
- 
+
     /* ===== Khởi tạo dữ liệu trang Dashboard ===== */
     function initDashboard(user) {
       // Lời chào
       const hoten = user?.hoten || 'bạn';
       document.getElementById('dash-greeting').textContent = `Xin chào, ${hoten} 👋`;
- 
+
       // Ca làm hôm nay (mock)
-      const todayShift = { name: 'Ca sáng', time: '08:00 – 12:00', branch: '📍 Cửa hàng Hà Nội' };
+      const todayShift = { name: 'Ca sáng', time: '08:00 – 12:00' };
       document.getElementById('dash-shift-name').textContent = todayShift.name;
       document.getElementById('dash-shift-time').textContent = todayShift.time;
-      document.getElementById('dash-branch').textContent = todayShift.branch;
- 
+      document.getElementById('dash-branch').textContent = `📍 ${user?.tenchinhanh || '--'}`;
+
       // Chấm công hôm nay (mock)
       document.getElementById('dash-checkin').textContent = '07:58';
       document.getElementById('dash-checkout').textContent = '--:--';
- 
+
       // Ngày / giờ hiện tại
       updateDashboardClock();
       setInterval(updateDashboardClock, 1000 * 30);
     }
- 
+
     /* ===== Cập nhật ngày / thứ hiện tại ===== */
     function updateDashboardClock() {
       const now = new Date();
