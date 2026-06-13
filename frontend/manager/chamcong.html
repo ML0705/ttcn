@@ -53,7 +53,6 @@
         <div class="filter-group search">
           <span class="filter-label">Nhân viên</span>
           <div class="search-wrap">
-            <span class="search-icon">🔍</span>
             <input type="text" id="filter-search"
                    placeholder="Tìm tên hoặc mã nhân viên…" />
           </div>
@@ -73,28 +72,57 @@
       <!-- ── Stat cards ── -->
       <div class="stat-row">
         <div class="stat-pill accent">
-          <div class="pill-icon">👥</div>
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  </div>
           <div>
             <div class="pill-val" id="stat-total">—</div>
             <div class="pill-lbl">Tổng ca hôm nay</div>
           </div>
         </div>
         <div class="stat-pill green">
-          <div class="pill-icon">✅</div>
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  </div>
           <div>
             <div class="pill-val" id="stat-ok">—</div>
             <div class="pill-lbl">Đúng giờ</div>
           </div>
         </div>
         <div class="stat-pill amber">
-          <div class="pill-icon">⏰</div>
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <circle cx="12" cy="13" r="8"/>
+      <path d="M12 9v4l2 2"/>
+      <path d="M5 3 2 6"/>
+      <path d="M22 6l-3-3"/>
+    </svg>
+  </div>
           <div>
             <div class="pill-val" id="stat-late">—</div>
             <div class="pill-lbl">Đi muộn / Về sớm</div>
           </div>
         </div>
         <div class="stat-pill red">
-          <div class="pill-icon">❌</div>
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M15 9l-6 6"/>
+      <path d="M9 9l6 6"/>
+    </svg>
+  </div>
           <div>
             <div class="pill-val" id="stat-absent">—</div>
             <div class="pill-lbl">Vắng / Chưa check-in</div>

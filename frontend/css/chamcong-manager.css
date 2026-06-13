@@ -14,7 +14,7 @@
   padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
 }
 
@@ -96,28 +96,23 @@
 }
 
 .stat-pill {
+  border-left: none;
+  border-radius: var(--radius);
+}
+.pill-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  box-shadow: var(--shadow);
-  border-left: 3px solid var(--border);
-  transition: box-shadow .15s;
+  justify-content: center;
+  flex-shrink: 0;
 }
+.stat-pill.accent .pill-icon { background: var(--accent-light); color: var(--accent); }
+.stat-pill.green  .pill-icon { background: var(--green-bg);     color: var(--green); }
+.stat-pill.amber  .pill-icon { background: var(--amber-bg);     color: var(--amber); }
+.stat-pill.red    .pill-icon { background: var(--red-bg);       color: var(--red); }
 
-.stat-pill:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-
-.stat-pill.accent { border-left-color: var(--accent); }
-.stat-pill.green  { border-left-color: var(--green); }
-.stat-pill.amber  { border-left-color: var(--amber); }
-.stat-pill.red    { border-left-color: var(--red); }
-
-.pill-icon { font-size: 20px; flex-shrink: 0; }
-.pill-val  { font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; }
-.pill-lbl  { font-size: 11px; color: var(--ink-muted); margin-top: 3px; }
 
 /* ── Table card ── */
 .table-card {
@@ -168,7 +163,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  color: #fff;
+  background: var(--accent-light) !important;
+  color: var(--accent-2);
   font-size: 11px;
   font-weight: 700;
   display: flex;

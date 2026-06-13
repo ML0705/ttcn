@@ -56,7 +56,7 @@ function initials(name) {
 }
 
 function avatarColor(code) {
-  const colors = ['#1D9E75','#2980B9','#8E44AD','#E67E22','#C0392B','#16A085','#D35400','#2C3E50'];
+   const colors = ['#1D9E75','#2980B9','#8E44AD','#E67E22','#C0392B','#16A085','#D35400','#2C3E50'];
   return colors[code.charCodeAt(code.length - 1) % colors.length];
 }
 
