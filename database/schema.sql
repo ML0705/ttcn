@@ -1,7 +1,12 @@
 ﻿-- ============================================================
 -- HYGGE - HỆ THỐNG QUẢN LÝ CA LÀM & CHẤM CÔNG
--- FILE: schema_v2.sql  (có trigger sinh mã tự động)
+-- FILE: schema_v3.sql
 -- DBMS: SQL Server (T-SQL)
+-- Thay đổi so với v2:
+--   1. Trigger Nhan_vien: gộp luôn tạo Tai_khoan (nhận matkhau từ caller)
+--   2. Trigger Chi_nhanh & Ca_lam: dùng cursor để hỗ trợ batch INSERT
+--   3. Thêm SP_TaoNhanVien: stored procedure tạo NV + TK trong 1 transaction
+--   4. Thêm trigger trg_NhanVien_DoiSDT: đồng bộ tendangnhap khi SĐT thay đổi
 -- ============================================================
 
 USE master;
@@ -27,17 +32,26 @@ IF OBJECT_ID('dbo.Chuc_vu',             'U') IS NOT NULL DROP TABLE dbo.Chuc_vu;
 IF OBJECT_ID('dbo.Loai_nhan_vien',      'U') IS NOT NULL DROP TABLE dbo.Loai_nhan_vien;
 IF OBJECT_ID('dbo.Chi_nhanh',           'U') IS NOT NULL DROP TABLE dbo.Chi_nhanh;
 
--- Dọn trigger nếu chạy lại
-IF OBJECT_ID('dbo.trg_Chi_nhanh_SinhMa',       'TR') IS NOT NULL DROP TRIGGER dbo.trg_Chi_nhanh_SinhMa;
-IF OBJECT_ID('dbo.trg_Nhan_vien_SinhMa',        'TR') IS NOT NULL DROP TRIGGER dbo.trg_Nhan_vien_SinhMa;
-IF OBJECT_ID('dbo.trg_Ca_lam_SinhMa',           'TR') IS NOT NULL DROP TRIGGER dbo.trg_Ca_lam_SinhMa;
-IF OBJECT_ID('dbo.trg_Lich_lam_SinhMa',         'TR') IS NOT NULL DROP TRIGGER dbo.trg_Lich_lam_SinhMa;
+-- Bảng đếm sequence
+IF OBJECT_ID('dbo._Seq_Chi_nhanh',      'U') IS NOT NULL DROP TABLE dbo._Seq_Chi_nhanh;
+IF OBJECT_ID('dbo._Seq_Nhan_vien_P',    'U') IS NOT NULL DROP TABLE dbo._Seq_Nhan_vien_P;
+IF OBJECT_ID('dbo._Seq_Nhan_vien_F',    'U') IS NOT NULL DROP TABLE dbo._Seq_Nhan_vien_F;
+IF OBJECT_ID('dbo._Seq_Ca_lam',         'U') IS NOT NULL DROP TABLE dbo._Seq_Ca_lam;
+
+-- Dọn trigger
+IF OBJECT_ID('dbo.trg_Chi_nhanh_SinhMa',   'TR') IS NOT NULL DROP TRIGGER dbo.trg_Chi_nhanh_SinhMa;
+IF OBJECT_ID('dbo.trg_Nhan_vien_SinhMa',   'TR') IS NOT NULL DROP TRIGGER dbo.trg_Nhan_vien_SinhMa;
+IF OBJECT_ID('dbo.trg_NhanVien_DoiSDT',    'TR') IS NOT NULL DROP TRIGGER dbo.trg_NhanVien_DoiSDT;
+IF OBJECT_ID('dbo.trg_Ca_lam_SinhMa',      'TR') IS NOT NULL DROP TRIGGER dbo.trg_Ca_lam_SinhMa;
+IF OBJECT_ID('dbo.trg_Lich_lam_SinhMa',    'TR') IS NOT NULL DROP TRIGGER dbo.trg_Lich_lam_SinhMa;
+
+-- Dọn stored procedure
+IF OBJECT_ID('dbo.SP_TaoNhanVien', 'P') IS NOT NULL DROP PROCEDURE dbo.SP_TaoNhanVien;
 GO
 
 -- ============================================================
 -- 1. CHI NHÁNH
 -- Mã tự sinh: CN01, CN02, ...
--- Cột machinhanh để NULL khi INSERT → trigger điền vào
 -- ============================================================
 CREATE TABLE dbo.Chi_nhanh (
     machinhanh      VARCHAR(10)     NOT NULL,
@@ -48,18 +62,15 @@ CREATE TABLE dbo.Chi_nhanh (
     giodongcua      TIME            NOT NULL,
     trangthai       BIT             NOT NULL DEFAULT 1,
 
-    CONSTRAINT PK_Chi_nhanh     PRIMARY KEY (machinhanh),
-    CONSTRAINT CK_CN_Gio        CHECK (giodongcua > giomocua)
+    CONSTRAINT PK_Chi_nhanh PRIMARY KEY (machinhanh),
+    CONSTRAINT CK_CN_Gio    CHECK (giodongcua > giomocua)
 );
 GO
 
--- Bảng đếm riêng để tránh race condition khi nhiều user INSERT cùng lúc
--- (thay vì MAX + 1 trên bảng chính — dễ bị duplicate khi concurrent)
-CREATE TABLE dbo._Seq_Chi_nhanh (
-    id INT IDENTITY(1,1) PRIMARY KEY
-);
+CREATE TABLE dbo._Seq_Chi_nhanh (id INT IDENTITY(1,1) PRIMARY KEY);
 GO
 
+-- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 CREATE TRIGGER dbo.trg_Chi_nhanh_SinhMa
 ON dbo.Chi_nhanh
 INSTEAD OF INSERT
@@ -67,38 +78,43 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Với mỗi dòng được INSERT, lấy 1 sequence number mới
-    -- IDENTITY đảm bảo không bao giờ trùng dù nhiều session cùng INSERT
-    DECLARE @rows TABLE (
-        tenchinhanh  NVARCHAR(50),
-        diachi       NVARCHAR(100),
-        sdtcn        CHAR(10),
-        giomocua     TIME,
-        giodongcua   TIME,
-        trangthai    BIT,
-        seq          INT
-    );
+    DECLARE @cur CURSOR;
+    SET @cur = CURSOR LOCAL FAST_FORWARD FOR
+        SELECT tenchinhanh, diachi, sdtcn, giomocua, giodongcua, trangthai
+        FROM inserted;
 
-    -- Chèn vào bảng đếm để lấy IDENTITY
-    INSERT INTO dbo._Seq_Chi_nhanh DEFAULT VALUES;
+    DECLARE
+        @tenchinhanh    NVARCHAR(50),
+        @diachi         NVARCHAR(100),
+        @sdtcn          CHAR(10),
+        @giomocua       TIME,
+        @giodongcua     TIME,
+        @trangthai      BIT,
+        @seq            INT,
+        @newMa          VARCHAR(10);
 
-    INSERT INTO @rows (tenchinhanh, diachi, sdtcn, giomocua, giodongcua, trangthai, seq)
-    SELECT
-        i.tenchinhanh, i.diachi, i.sdtcn, i.giomocua, i.giodongcua,
-        ISNULL(i.trangthai, 1),
-        SCOPE_IDENTITY()   -- lấy giá trị IDENTITY vừa sinh
-    FROM inserted i;
+    OPEN @cur;
+    FETCH NEXT FROM @cur INTO @tenchinhanh, @diachi, @sdtcn, @giomocua, @giodongcua, @trangthai;
 
-    INSERT INTO dbo.Chi_nhanh (machinhanh, tenchinhanh, diachi, sdtcn, giomocua, giodongcua, trangthai)
-    SELECT
-        'CN' + RIGHT('00' + CAST(seq AS VARCHAR(2)), 2),
-        tenchinhanh, diachi, sdtcn, giomocua, giodongcua, trangthai
-    FROM @rows;
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        INSERT INTO dbo._Seq_Chi_nhanh DEFAULT VALUES;
+        SET @seq   = SCOPE_IDENTITY();
+        SET @newMa = 'CN' + RIGHT('00' + CAST(@seq AS VARCHAR(2)), 2);
+
+        INSERT INTO dbo.Chi_nhanh (machinhanh, tenchinhanh, diachi, sdtcn, giomocua, giodongcua, trangthai)
+        VALUES (@newMa, @tenchinhanh, @diachi, @sdtcn, @giomocua, @giodongcua, ISNULL(@trangthai, 1));
+
+        FETCH NEXT FROM @cur INTO @tenchinhanh, @diachi, @sdtcn, @giomocua, @giodongcua, @trangthai;
+    END
+
+    CLOSE @cur;
+    DEALLOCATE @cur;
 END;
 GO
 
 -- ============================================================
--- 2. LOẠI NHÂN VIÊN  (dữ liệu tĩnh, không cần trigger)
+-- 2. LOẠI NHÂN VIÊN
 -- ============================================================
 CREATE TABLE dbo.Loai_nhan_vien (
     maloainhanvien  VARCHAR(10)     NOT NULL,
@@ -111,7 +127,7 @@ CREATE TABLE dbo.Loai_nhan_vien (
 GO
 
 -- ============================================================
--- 3. CHỨC VỤ  (dữ liệu tĩnh, không cần trigger)
+-- 3. CHỨC VỤ
 -- ============================================================
 CREATE TABLE dbo.Chuc_vu (
     machucvu    CHAR(10)        NOT NULL,
@@ -125,7 +141,7 @@ GO
 -- ============================================================
 -- 4. NHÂN VIÊN
 -- Mã tự sinh: NVP0001 (Parttime) | NVF0001 (Fulltime)
--- Caller KHÔNG truyền manhanvien — trigger tự điền
+-- Caller truyền thêm matkhau (plain-text) → trigger hash và tạo Tai_khoan
 -- ============================================================
 CREATE TABLE dbo.Nhan_vien (
     manhanvien      VARCHAR(10)     NOT NULL,
@@ -136,23 +152,51 @@ CREATE TABLE dbo.Nhan_vien (
     email           VARCHAR(50)     NULL,
     sodienthoai     CHAR(10)        NOT NULL,
 
-    CONSTRAINT PK_Nhan_vien         PRIMARY KEY (manhanvien),
-    CONSTRAINT UQ_NV_Email          UNIQUE (email),
-    CONSTRAINT UQ_NV_SDT            UNIQUE (sodienthoai),
-    CONSTRAINT FK_NV_Chi_nhanh      FOREIGN KEY (machinhanh)
-                                        REFERENCES dbo.Chi_nhanh (machinhanh),
-    CONSTRAINT FK_NV_Loai_NV        FOREIGN KEY (maloainhanvien)
-                                        REFERENCES dbo.Loai_nhan_vien (maloainhanvien),
-    CONSTRAINT FK_NV_Chuc_vu        FOREIGN KEY (machucvu)
-                                        REFERENCES dbo.Chuc_vu (machucvu)
+    -- Cột tạm để nhận mật khẩu từ caller, KHÔNG lưu lại sau trigger
+    -- Trigger đọc rồi INSERT vào Tai_khoan, sau đó cột này bị bỏ qua
+    -- Dùng computed column giả hoặc truyền qua SP (xem SP_TaoNhanVien bên dưới)
+
+    CONSTRAINT PK_Nhan_vien     PRIMARY KEY (manhanvien),
+    CONSTRAINT UQ_NV_Email      UNIQUE (email),
+    CONSTRAINT UQ_NV_SDT        UNIQUE (sodienthoai),
+    CONSTRAINT FK_NV_Chi_nhanh  FOREIGN KEY (machinhanh)
+                                    REFERENCES dbo.Chi_nhanh (machinhanh),
+    CONSTRAINT FK_NV_Loai_NV    FOREIGN KEY (maloainhanvien)
+                                    REFERENCES dbo.Loai_nhan_vien (maloainhanvien),
+    CONSTRAINT FK_NV_Chuc_vu    FOREIGN KEY (machucvu)
+                                    REFERENCES dbo.Chuc_vu (machucvu)
 );
 GO
 
--- Bảng đếm riêng theo từng loại (P / F)
 CREATE TABLE dbo._Seq_Nhan_vien_P (id INT IDENTITY(1,1) PRIMARY KEY);
 CREATE TABLE dbo._Seq_Nhan_vien_F (id INT IDENTITY(1,1) PRIMARY KEY);
 GO
 
+-- ============================================================
+-- 5. TÀI KHOẢN
+-- tendangnhap = sodienthoai (UNIQUE đã đảm bảo không trùng)
+-- ============================================================
+CREATE TABLE dbo.Tai_khoan (
+    manhanvien          VARCHAR(10)     NOT NULL,
+    tendangnhap         CHAR(10)        NOT NULL,   -- = sodienthoai
+    matkhau             VARCHAR(255)    NOT NULL,   -- lưu dạng hash SHA2_256
+    solansaidangnhap    INT             NOT NULL DEFAULT 0,
+    trangthaikhoa       BIT             NOT NULL DEFAULT 0,
+
+    CONSTRAINT PK_Tai_khoan     PRIMARY KEY (manhanvien),
+    CONSTRAINT UQ_TK_TenDN      UNIQUE (tendangnhap),
+    CONSTRAINT FK_TK_Nhan_vien  FOREIGN KEY (manhanvien)
+                                    REFERENCES dbo.Nhan_vien (manhanvien),
+    CONSTRAINT CK_TK_SoLanSai   CHECK (solansaidangnhap >= 0)
+);
+GO
+
+-- ============================================================
+-- TRIGGER: Nhân viên — sinh mã + tạo Tai_khoan
+-- Lưu ý: vì mật khẩu không thể truyền qua inserted table của Nhan_vien,
+--        nên dùng SP_TaoNhanVien (bên dưới) thay vì INSERT trực tiếp.
+--        Trigger này giữ để xử lý trường hợp INSERT trực tiếp (mật khẩu mặc định = hash SĐT).
+-- ============================================================
 CREATE TRIGGER dbo.trg_Nhan_vien_SinhMa
 ON dbo.Nhan_vien
 INSTEAD OF INSERT
@@ -160,7 +204,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Xử lý từng dòng inserted (đề tài thường INSERT 1 dòng / lần)
     DECLARE @cur CURSOR;
     SET @cur = CURSOR LOCAL FAST_FORWARD FOR
         SELECT machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai
@@ -182,14 +225,14 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        -- Xác định prefix và bảng đếm theo loại
-        IF @maloainhanvien = 'LNV02'   -- Parttime
+        -- Sinh mã theo loại nhân viên
+        IF @maloainhanvien = 'LNV02'    -- Parttime
         BEGIN
             INSERT INTO dbo._Seq_Nhan_vien_P DEFAULT VALUES;
             SET @seq    = SCOPE_IDENTITY();
             SET @prefix = 'NVP';
         END
-        ELSE                            -- Fulltime
+        ELSE                             -- Fulltime
         BEGIN
             INSERT INTO dbo._Seq_Nhan_vien_F DEFAULT VALUES;
             SET @seq    = SCOPE_IDENTITY();
@@ -198,10 +241,20 @@ BEGIN
 
         SET @newMa = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
 
+        -- INSERT nhân viên
         INSERT INTO dbo.Nhan_vien
             (manhanvien, machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
         VALUES
             (@newMa, @machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sdt);
+
+        -- Tự tạo tài khoản, mật khẩu mặc định = hash(SĐT)
+        -- Khuyến nghị: dùng SP_TaoNhanVien để truyền mật khẩu tùy chỉnh
+        INSERT INTO dbo.Tai_khoan (manhanvien, tendangnhap, matkhau)
+        VALUES (
+            @newMa,
+            @sdt,
+            CONVERT(VARCHAR(255), HASHBYTES('SHA2_256', @sdt), 2)
+        );
 
         FETCH NEXT FROM @cur INTO @machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sdt;
     END
@@ -212,26 +265,30 @@ END;
 GO
 
 -- ============================================================
--- 5. TÀI KHOẢN  (không cần trigger — PK = manhanvien)
+-- TRIGGER: Đồng bộ tendangnhap khi SĐT thay đổi
 -- ============================================================
-CREATE TABLE dbo.Tai_khoan (
-    manhanvien          VARCHAR(10)     NOT NULL,
-    tendangnhap         CHAR(10)        NOT NULL,
-    matkhau             VARCHAR(255)    NOT NULL,
-    solansaidangnhap    INT             NOT NULL DEFAULT 0,
-    trangthaikhoa       BIT             NOT NULL DEFAULT 0,
+CREATE TRIGGER dbo.trg_NhanVien_DoiSDT
+ON dbo.Nhan_vien
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
 
-    CONSTRAINT PK_Tai_khoan         PRIMARY KEY (manhanvien),
-    CONSTRAINT UQ_TK_TenDN          UNIQUE (tendangnhap),
-    CONSTRAINT FK_TK_Nhan_vien      FOREIGN KEY (manhanvien)
-                                        REFERENCES dbo.Nhan_vien (manhanvien),
-    CONSTRAINT CK_TK_SoLanSai       CHECK (solansaidangnhap >= 0)
-);
+    IF NOT UPDATE(sodienthoai) RETURN;
+
+    UPDATE tk
+    SET tk.tendangnhap = i.sodienthoai
+    FROM dbo.Tai_khoan tk
+    INNER JOIN inserted i ON i.manhanvien = tk.manhanvien
+    INNER JOIN deleted  d ON d.manhanvien = tk.manhanvien
+    WHERE d.sodienthoai <> i.sodienthoai;   -- chỉ cập nhật khi thực sự đổi
+END;
 GO
 
 -- ============================================================
 -- 6. CA LÀM
 -- Mã tự sinh: C01, C02, ...
+-- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 -- ============================================================
 CREATE TABLE dbo.Ca_lam (
     maca    CHAR(10)        NOT NULL,
@@ -239,8 +296,8 @@ CREATE TABLE dbo.Ca_lam (
     batdau  TIME            NOT NULL,
     ketthuc TIME            NOT NULL,
 
-    CONSTRAINT PK_Ca_lam    PRIMARY KEY (maca),
-    CONSTRAINT CK_CL_Gio    CHECK (ketthuc > batdau)
+    CONSTRAINT PK_Ca_lam PRIMARY KEY (maca),
+    CONSTRAINT CK_CL_Gio CHECK (ketthuc > batdau)
 );
 GO
 
@@ -254,20 +311,40 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo._Seq_Ca_lam DEFAULT VALUES;
+    DECLARE @cur CURSOR;
+    SET @cur = CURSOR LOCAL FAST_FORWARD FOR
+        SELECT tenca, batdau, ketthuc FROM inserted;
 
-    INSERT INTO dbo.Ca_lam (maca, tenca, batdau, ketthuc)
-    SELECT
-        'C' + RIGHT('00' + CAST(SCOPE_IDENTITY() AS VARCHAR(2)), 2),
-        i.tenca, i.batdau, i.ketthuc
-    FROM inserted i;
+    DECLARE
+        @tenca   NVARCHAR(50),
+        @batdau  TIME,
+        @ketthuc TIME,
+        @seq     INT,
+        @newMa   CHAR(10);
+
+    OPEN @cur;
+    FETCH NEXT FROM @cur INTO @tenca, @batdau, @ketthuc;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        INSERT INTO dbo._Seq_Ca_lam DEFAULT VALUES;
+        SET @seq   = SCOPE_IDENTITY();
+        SET @newMa = 'C' + RIGHT('00' + CAST(@seq AS VARCHAR(2)), 2);
+
+        INSERT INTO dbo.Ca_lam (maca, tenca, batdau, ketthuc)
+        VALUES (@newMa, @tenca, @batdau, @ketthuc);
+
+        FETCH NEXT FROM @cur INTO @tenca, @batdau, @ketthuc;
+    END
+
+    CLOSE @cur;
+    DEALLOCATE @cur;
 END;
 GO
 
 -- ============================================================
 -- 7. LỊCH LÀM
 -- Mã tự sinh: ddmmyyyy + maca  (vd: 16062025C01)
--- Snapshot thời gian từ Ca_lam
 -- ============================================================
 CREATE TABLE dbo.Lich_lam (
     malichlam       VARCHAR(20)     NOT NULL,
@@ -276,11 +353,10 @@ CREATE TABLE dbo.Lich_lam (
     thoigianbatdau  TIME            NOT NULL,
     thoigianketthuc TIME            NOT NULL,
 
-    CONSTRAINT PK_Lich_lam          PRIMARY KEY (malichlam),
-    CONSTRAINT FK_LL_Ca_lam         FOREIGN KEY (maca)
-                                        REFERENCES dbo.Ca_lam (maca),
-    CONSTRAINT UQ_LL_NgayCa         UNIQUE (ngay, maca),
-    CONSTRAINT CK_LL_ThoiGian       CHECK (thoigianketthuc > thoigianbatdau)
+    CONSTRAINT PK_Lich_lam      PRIMARY KEY (malichlam),
+    CONSTRAINT FK_LL_Ca_lam     FOREIGN KEY (maca) REFERENCES dbo.Ca_lam (maca),
+    CONSTRAINT UQ_LL_NgayCa     UNIQUE (ngay, maca),
+    CONSTRAINT CK_LL_ThoiGian   CHECK (thoigianketthuc > thoigianbatdau)
 );
 GO
 
@@ -291,11 +367,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Lấy snapshot giờ từ Ca_lam, sinh mã tự động
-    -- Caller chỉ cần truyền: maca + ngay  (không cần malichlam, thoigianbatdau, thoigianketthuc)
+    -- Caller chỉ cần truyền: maca + ngay
+    -- Trigger tự lấy giờ snapshot từ Ca_lam và sinh malichlam
     INSERT INTO dbo.Lich_lam (malichlam, maca, ngay, thoigianbatdau, thoigianketthuc)
     SELECT
-        -- Sinh mã: ddmmyyyy + maca
         RIGHT('00' + CAST(DAY(i.ngay)   AS VARCHAR(2)), 2) +
         RIGHT('00' + CAST(MONTH(i.ngay) AS VARCHAR(2)), 2) +
         CAST(YEAR(i.ngay) AS VARCHAR(4)) +
@@ -303,8 +378,6 @@ BEGIN
 
         i.maca,
         i.ngay,
-
-        -- Snapshot từ Ca_lam (ưu tiên giá trị caller truyền nếu có, không thì lấy từ Ca_lam)
         ISNULL(i.thoigianbatdau,  c.batdau),
         ISNULL(i.thoigianketthuc, c.ketthuc)
 
@@ -314,7 +387,7 @@ END;
 GO
 
 -- ============================================================
--- 8. ĐĂNG KÝ LỊCH LÀM  (không cần trigger — PK ghép)
+-- 8. ĐĂNG KÝ LỊCH LÀM
 -- ============================================================
 CREATE TABLE dbo.Dang_ky_lich_lam (
     manhanvien  VARCHAR(10)     NOT NULL,
@@ -329,7 +402,7 @@ CREATE TABLE dbo.Dang_ky_lich_lam (
 GO
 
 -- ============================================================
--- 9. CHẤM CÔNG  (không cần trigger)
+-- 9. CHẤM CÔNG
 -- ============================================================
 CREATE TABLE dbo.Cham_cong (
     manhanvien          VARCHAR(10)     NOT NULL,
@@ -344,11 +417,60 @@ CREATE TABLE dbo.Cham_cong (
                                         REFERENCES dbo.Nhan_vien (manhanvien),
     CONSTRAINT FK_CC_Lich_lam       FOREIGN KEY (malichlam)
                                         REFERENCES dbo.Lich_lam (malichlam),
-    CONSTRAINT CK_CC_TrangThaiIn    CHECK (trangthaicheckin    IN (0, 1)),
-    CONSTRAINT CK_CC_TrangThaiOut   CHECK (trangthaicheckout   IN (0, 1)),
+    CONSTRAINT CK_CC_TrangThaiIn    CHECK (trangthaicheckin  IN (0, 1)),
+    CONSTRAINT CK_CC_TrangThaiOut   CHECK (trangthaicheckout IN (0, 1)),
     CONSTRAINT CK_CC_CheckTime      CHECK (checkout IS NULL OR checkin IS NULL OR checkout > checkin)
 );
 GO
 
-PRINT N'Schema v2 (có trigger) tạo thành công — HyggeDB';
+-- ============================================================
+-- STORED PROCEDURE: Tạo nhân viên + tài khoản trong 1 transaction
+-- Đây là cách được khuyến nghị từ form "Thêm tài khoản"
+-- Caller truyền đủ thông tin bao gồm matkhau (plain-text)
+-- SP sẽ hash mật khẩu trước khi lưu
+-- ============================================================
+CREATE PROCEDURE dbo.SP_TaoNhanVien
+    @machinhanh         VARCHAR(10),
+    @maloainhanvien     VARCHAR(10),    -- 'LNV01' = Fulltime | 'LNV02' = Parttime
+    @machucvu           CHAR(10),
+    @hoten              NVARCHAR(50),
+    @email              VARCHAR(50)     = NULL,
+    @sodienthoai        CHAR(10),
+    @matkhau            VARCHAR(255),   -- plain-text, SP sẽ hash SHA2_256
+    @manhanvien_out     VARCHAR(10)     OUTPUT  -- trả về mã vừa sinh
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Bước 1: INSERT nhân viên (trigger sẽ sinh mã + tạo Tai_khoan với pw mặc định)
+        INSERT INTO dbo.Nhan_vien
+            (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+        VALUES
+            (@machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sodienthoai);
+
+        -- Bước 2: Lấy mã vừa sinh (sodienthoai là UNIQUE nên an toàn)
+        SELECT @manhanvien_out = manhanvien
+        FROM dbo.Nhan_vien
+        WHERE sodienthoai = @sodienthoai;
+
+        -- Bước 3: Cập nhật mật khẩu đúng theo người dùng nhập
+        -- (trigger đã tạo dòng Tai_khoan với pw tạm = hash(SĐT))
+        UPDATE dbo.Tai_khoan
+        SET matkhau = CONVERT(VARCHAR(255), HASHBYTES('SHA2_256', @matkhau), 2)
+        WHERE manhanvien = @manhanvien_out;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        DECLARE @ErrMsg  NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrSev  INT            = ERROR_SEVERITY();
+        RAISERROR(@ErrMsg, @ErrSev, 1);
+    END CATCH
+END;
 GO
+

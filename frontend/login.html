@@ -268,16 +268,33 @@ function doLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pw').value;
   let ok = true;
+  
   if (!u) { document.getElementById('err-user').classList.add('show'); ok = false; }
-  else     { document.getElementById('err-user').classList.remove('show'); }
+  else    { document.getElementById('err-user').classList.remove('show'); }
   if (!p) { document.getElementById('err-pw').classList.add('show'); ok = false; }
   else    { document.getElementById('err-pw').classList.remove('show'); }
+  
   if (!ok) return;
-  // Demo: admin credentials
+
+  // Code điều hướng Demo
   if ((u === 'admin' || u === 'quan.ly@hygge.vn') && p === 'Admin123') {
-    window.location.href = 'manager.html';
+    // Lưu token + mockUser để initLayout() ở các trang quản lý nhận diện được
+    localStorage.setItem('token', 'demo-token-quanly');
+    localStorage.setItem('mockUser', JSON.stringify({
+      hoten: 'Nguyễn Văn Quản',
+      role: 'quanly',
+      tenchinhanh: 'Cửa hàng Hà Nội'
+    }));
+    window.location.href = 'manager/manager.html';
   } else if ((u === 'nv01' || u === 'nv@hygge.vn') && p === 'Nv12345!') {
-    window.location.href = 'employee.html';
+    // Lưu token + mockUser để initLayout() ở các trang nhân viên nhận diện được
+    localStorage.setItem('token', 'demo-token-nhanvien');
+    localStorage.setItem('mockUser', JSON.stringify({
+      hoten: 'Nguyễn Thu Phương',
+      role: 'nhanvien',
+      tenchinhanh: 'Cửa hàng Hà Nội'
+    }));
+    window.location.href = 'employee/dashboard.html';
   } else {
     document.getElementById('login-error').classList.add('show');
   }
