@@ -5,114 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HYGGE HR · Quản lý chấm công</title>
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    /* ── Trang-specific overrides ── */
-    .filter-bar {
-      display: flex; gap: 10px; flex-wrap: wrap;
-      align-items: flex-end; margin-bottom: 18px;
-    }
-    .filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
-    .filter-group label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .05em; }
-    .filter-group select,
-    .filter-group input  { height: 34px; padding: 0 10px; font-size: 13px; }
-    .filter-group.search { flex: 1; min-width: 200px; }
-    .filter-spacer { flex: 1; }
-    .btn-export { white-space: nowrap; }
-
-    /* Stat row */
-    .stat-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat-pill {
-      display: flex; align-items: center; gap: 10px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 12px 18px;
-      flex: 1; min-width: 140px;
-    }
-    .stat-pill .pill-icon { font-size: 22px; }
-    .stat-pill .pill-val  { font-size: 20px; font-weight: 700; color: var(--ink); line-height: 1; }
-    .stat-pill .pill-lbl  { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
-    .stat-pill.accent  { border-left: 3px solid var(--accent); }
-    .stat-pill.green   { border-left: 3px solid var(--green); }
-    .stat-pill.amber   { border-left: 3px solid var(--amber); }
-    .stat-pill.red     { border-left: 3px solid var(--red); }
-
-    /* Table enhancements */
-    .avatar-cell { display: flex; align-items: center; gap: 10px; }
-    .avatar-sm {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--accent); color: #fff;
-      font-size: 11px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .av-name  { font-weight: 600; font-size: 13px; }
-    .av-code  { font-size: 11px; color: var(--ink-muted); }
-
-    .time-cell       { font-size: 13px; font-variant-numeric: tabular-nums; }
-    .time-cell.miss  { color: var(--ink-muted); font-style: italic; }
-
-    .duration-pill {
-      display: inline-block; padding: 2px 8px;
-      border-radius: 100px; font-size: 12px; font-weight: 600;
-      background: var(--surface-2);
-    }
-
-    /* Action buttons in table */
-    .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
-    .btn-edit-row {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 4px 10px; border: 1px solid var(--border);
-      border-radius: var(--radius-sm); background: var(--surface);
-      font-size: 12px; font-weight: 500; cursor: pointer; color: var(--ink-soft);
-      transition: all .12s;
-    }
-    .btn-edit-row:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
-
-    /* Empty & loading states */
-    .table-skeleton td { padding: 10px 12px; }
-    .sk { height: 14px; border-radius: 4px; }
-
-    /* No results row */
-    .no-data td { text-align: center; padding: 40px 12px; color: var(--ink-muted); font-size: 13px; }
-
-    /* Date navigator */
-    .date-nav { display: flex; align-items: center; gap: 6px; }
-    .date-nav-btn {
-      width: 28px; height: 28px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface);
-      cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
-      transition: background .12s;
-    }
-    .date-nav-btn:hover { background: var(--surface-2); }
-    .date-nav-label { font-size: 13px; font-weight: 600; min-width: 100px; text-align: center; }
-
-    /* Edit modal specifics */
-    .edit-info-bar {
-      display: flex; gap: 12px; padding: 10px 14px;
-      background: var(--surface-2); border-radius: var(--radius-sm);
-      margin-bottom: 18px; font-size: 13px;
-    }
-    .edit-info-bar span { color: var(--ink-muted); margin-right: 4px; }
-    .edit-info-bar strong { color: var(--ink); font-weight: 600; }
-    .edit-info-divider { color: var(--border-strong); }
-
-    .time-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    .audit-log { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
-    .audit-log-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); margin-bottom: 8px; }
-    .audit-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; font-size: 12px; }
-    .audit-time { color: var(--ink-muted); white-space: nowrap; flex-shrink: 0; }
-    .audit-body { color: var(--ink-soft); }
-
-    /* Responsive table */
-    .hide-sm { }
-    @media (max-width: 900px) { .hide-sm { display: none; } }
-    @media (max-width: 640px) {
-      .filter-bar { flex-direction: column; }
-      .filter-group { min-width: unset; width: 100%; }
-      .stat-row { gap: 8px; }
-      .stat-pill { min-width: 120px; padding: 10px 12px; }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/chamcong-manager.css" />
 </head>
 <body>
 
@@ -126,32 +19,28 @@
 
     <main class="content">
 
-      <!-- ── Thanh bộ lọc ── -->
-      <div class="filter-bar">
+      <!-- ── Bộ lọc ── -->
+      <div class="filter-section">
 
-        <!-- Điều hướng ngày -->
         <div class="filter-group">
-          <label>Ngày</label>
+          <span class="filter-label">Ngày</span>
           <div class="date-nav">
             <button class="date-nav-btn" id="btn-prev-day" title="Ngày trước">‹</button>
-            <input type="date" id="filter-date" class="form-control"
-                   style="min-width:140px;height:34px;padding:0 10px;font-size:13px;" />
+            <input type="date" id="filter-date" />
             <button class="date-nav-btn" id="btn-next-day" title="Ngày sau">›</button>
           </div>
         </div>
 
-        <!-- Ca làm -->
         <div class="filter-group">
-          <label>Ca làm</label>
-          <select id="filter-ca" class="form-control">
+          <span class="filter-label">Ca làm</span>
+          <select id="filter-ca">
             <option value="">Tất cả ca</option>
           </select>
         </div>
 
-        <!-- Trạng thái -->
         <div class="filter-group">
-          <label>Trạng thái</label>
-          <select id="filter-tt" class="form-control">
+          <span class="filter-label">Trạng thái</span>
+          <select id="filter-tt">
             <option value="">Tất cả trạng thái</option>
             <option value="dunggio">Đúng giờ</option>
             <option value="muon">Đi muộn</option>
@@ -161,12 +50,11 @@
           </select>
         </div>
 
-        <!-- Tìm nhân viên -->
         <div class="filter-group search">
-          <label>Nhân viên</label>
+          <span class="filter-label">Nhân viên</span>
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
-            <input type="text" id="filter-search" class="form-control"
+            <input type="text" id="filter-search"
                    placeholder="Tìm tên hoặc mã nhân viên…" />
           </div>
         </div>
@@ -174,15 +62,16 @@
         <div class="filter-spacer"></div>
 
         <div class="filter-group" style="justify-content:flex-end;">
-          <label>&nbsp;</label>
-          <button class="btn btn-outline btn-export" id="btn-export" title="Xuất báo cáo Excel">
+          <span class="filter-label">&nbsp;</span>
+          <button class="btn btn-outline" id="btn-export">
             ⬇ Xuất báo cáo
           </button>
         </div>
+
       </div>
 
-      <!-- ── Thẻ tổng quan ── -->
-      <div class="stat-row" id="stat-row">
+      <!-- ── Stat cards ── -->
+      <div class="stat-row">
         <div class="stat-pill accent">
           <div class="pill-icon">👥</div>
           <div>
@@ -214,21 +103,16 @@
       </div>
 
       <!-- ── Bảng chấm công ── -->
-      <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-card">
 
-        <!-- Tiêu đề bảng -->
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:14px 18px;border-bottom:1px solid var(--border);">
+        <div class="table-card-header">
           <div>
-            <span class="card-title" style="margin:0;" id="table-heading">
-              Chấm công ngày hôm nay
-            </span>
-            <span id="table-count"
-                  style="margin-left:8px;font-size:12px;color:var(--ink-muted);"></span>
+            <span class="table-card-title" id="table-heading">Chấm công hôm nay</span>
+            <span class="table-count" id="table-count"></span>
           </div>
-          <!-- Loading indicator -->
-          <div id="tbl-loading" style="display:none;">
+          <div class="tbl-loading" id="tbl-loading">
             <span class="spinner"></span>
+            <span>Đang tải…</span>
           </div>
         </div>
 
@@ -236,88 +120,84 @@
           <table id="cc-table">
             <thead>
               <tr>
-                <th style="width:200px;">Nhân viên</th>
-                <th>Ca làm</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
-                <th class="hide-sm">Giờ thực tế</th>
-                <th>Trạng thái</th>
+                <th style="width:210px;">Nhân viên</th>
+                <th style="width:140px;">Ca làm</th>
+                <th style="width:100px;">Check-in</th>
+                <th style="width:120px;">Check-out</th>
+                <th style="width:100px;" class="hide-sm">Giờ thực tế</th>
+                <th style="width:120px;">Trạng thái</th>
                 <th style="width:80px;text-align:right;">Thao tác</th>
               </tr>
             </thead>
             <tbody id="cc-tbody">
-              <!-- Skeleton loading -->
-              <tr class="table-skeleton">
-                <td><div class="sk skeleton" style="width:140px;"></div></td>
-                <td><div class="sk skeleton" style="width:70px;"></div></td>
-                <td><div class="sk skeleton" style="width:55px;"></div></td>
-                <td><div class="sk skeleton" style="width:55px;"></div></td>
-                <td><div class="sk skeleton" style="width:50px;"></div></td>
-                <td><div class="sk skeleton" style="width:80px;"></div></td>
-                <td><div class="sk skeleton" style="width:30px;float:right;"></div></td>
+              <!-- Skeleton placeholder -->
+              <tr>
+                <td><div class="skeleton" style="height:14px;width:150px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:36px;margin-left:auto;"></div></td>
               </tr>
-              <tr class="table-skeleton">
-                <td><div class="sk skeleton" style="width:120px;"></div></td>
-                <td><div class="sk skeleton" style="width:70px;"></div></td>
-                <td><div class="sk skeleton" style="width:55px;"></div></td>
-                <td><div class="sk skeleton" style="width:55px;"></div></td>
-                <td><div class="sk skeleton" style="width:50px;"></div></td>
-                <td><div class="sk skeleton" style="width:80px;"></div></td>
-                <td><div class="sk skeleton" style="width:30px;float:right;"></div></td>
+              <tr>
+                <td><div class="skeleton" style="height:14px;width:120px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:36px;margin-left:auto;"></div></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Pagination -->
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:12px 18px;border-top:1px solid var(--border);">
+        <div class="table-footer">
           <span class="page-info" id="page-info">—</span>
           <div class="pagination" id="pagination"></div>
         </div>
+
       </div>
 
-    </main><!-- /content -->
-  </div><!-- /main -->
-</div><!-- /app-shell -->
+    </main>
+  </div>
+</div>
 
 
-<!-- ══════════════════════════════════════════
-     MODAL CHỈNH SỬA CHẤM CÔNG
-══════════════════════════════════════════ -->
+<!-- ══ MODAL CHỈNH SỬA CHẤM CÔNG ══ -->
 <div class="modal-overlay" id="modal-edit">
   <div class="modal">
+
     <div class="modal-header">
       <span class="modal-title">Chỉnh sửa chấm công</span>
       <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
     </div>
+
     <div class="modal-body">
 
       <!-- Thông tin ca -->
       <div class="edit-info-bar">
-        <div>
-          <span>Nhân viên:</span>
-          <strong id="edit-nv-name">—</strong>
+        <div class="info-item">
+          <span class="info-label">Nhân viên</span>
+          <span class="info-val" id="edit-nv-name">—</span>
         </div>
-        <div class="edit-info-divider">|</div>
-        <div>
-          <span>Ca:</span>
-          <strong id="edit-ca-name">—</strong>
+        <div class="info-item">
+          <span class="info-label">Ca làm</span>
+          <span class="info-val" id="edit-ca-name">—</span>
         </div>
-        <div class="edit-info-divider">|</div>
-        <div>
-          <span>Ngày:</span>
-          <strong id="edit-ngay">—</strong>
+        <div class="info-item">
+          <span class="info-label">Ngày</span>
+          <span class="info-val" id="edit-ngay">—</span>
         </div>
       </div>
 
-      <!-- Thời gian quy định (readonly) -->
-      <div class="alert alert-info" id="edit-quydinh" style="margin-bottom:14px;">
-        <span>📋</span>
-        <span id="edit-quydinh-text">Ca sáng · 08:00 – 12:00</span>
+      <!-- Giờ quy định -->
+      <div class="alert alert-info" style="margin-bottom:16px;">
+        📋 <span id="edit-quydinh-text">—</span>
       </div>
 
-      <!-- Form chỉnh sửa -->
+      <!-- Form -->
       <div class="time-inputs">
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Giờ check-in</label>
@@ -332,36 +212,32 @@
       </div>
 
       <div class="form-group" style="margin-top:14px;">
-        <label class="form-label">Ghi chú lý do chỉnh sửa <span style="color:var(--red);">*</span></label>
+        <label class="form-label">
+          Lý do chỉnh sửa <span style="color:var(--red);">*</span>
+        </label>
         <textarea id="edit-lydo" class="form-control" rows="3"
-                  placeholder="Nhập lý do chỉnh sửa (bắt buộc)…"
+                  placeholder="Nhập lý do chỉnh sửa…"
                   style="resize:vertical;"></textarea>
         <div class="form-error" id="err-lydo"></div>
       </div>
 
-      <!-- Lịch sử chỉnh sửa -->
-      <div class="audit-log" id="audit-section" style="display:none;">
-        <div class="audit-log-title">Lịch sử chỉnh sửa</div>
-        <div id="audit-list"></div>
-      </div>
-
     </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-edit')">Hủy</button>
       <button class="btn btn-primary" id="btn-save-edit" onclick="saveEdit()">
         Lưu thay đổi
       </button>
     </div>
+
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     CONFIRM POPUP (dùng chung từ shared.js)
-══════════════════════════════════════════ -->
+<!-- ══ CONFIRM POPUP (dùng chung từ shared.js) ══ -->
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal" style="max-width:380px;">
-    <div class="modal-body" style="padding:28px 24px 20px;">
+    <div class="modal-body" style="padding:28px 24px 16px;text-align:center;">
       <div class="confirm-icon">⚠️</div>
       <div class="confirm-title" id="confirm-title">Xác nhận</div>
       <div class="confirm-text"  id="confirm-text"></div>
@@ -375,403 +251,7 @@
 
 
 <script src="/js/shared.js"></script>
-<script>
-/* ═══════════════════════════════════════════════════════════════
-   manager/chamcong.js  (inline – tách ra file riêng khi backend xong)
-═══════════════════════════════════════════════════════════════ */
+<script src="/js/chamcong-manager.js"></script>
 
-/* ---------- STATE ---------- */
-let currentDate   = todayStr();
-let currentPage   = 1;
-const PAGE_SIZE   = 10;
-let allRows       = [];        // dữ liệu gốc (từ API / mock)
-let filteredRows  = [];        // sau khi lọc
-let editingRow    = null;      // dòng đang chỉnh sửa
-let caList        = [];        // danh sách ca từ API
-
-/* ---------- MOCK DATA (xoá khi kết nối API) ---------- */
-const MOCK_CA = [
-  { maca: 'C01', tenca: 'Ca sáng',  batdau: '08:00', ketthuc: '12:00' },
-  { maca: 'C02', tenca: 'Ca chiều', batdau: '13:00', ketthuc: '17:00' },
-  { maca: 'C03', tenca: 'Ca tối',   batdau: '17:00', ketthuc: '21:00' },
-];
-const MOCK_DATA = [
-  { id:1, manv:'NVP0001', hoten:'Nguyễn Mỹ Hạnh', loai:'Part-time', maca:'C01', tenca:'Ca sáng', batdau:'08:00', ketthuc:'12:00', checkin:'07:04', checkout:'12:01', muon:0, vesom:0 },
-  { id:2, manv:'NVP0002', hoten:'Trần Minh Tú',   loai:'Part-time', maca:'C01', tenca:'Ca sáng', batdau:'08:00', ketthuc:'12:00', checkin:'06:58', checkout:'12:00', muon:0, vesom:0 },
-  { id:3, manv:'NVF0001', hoten:'Tạ Mai Phương',  loai:'Full-time', maca:'C01', tenca:'Ca sáng', batdau:'08:00', ketthuc:'12:00', checkin:'08:17', checkout:'12:05', muon:1, vesom:0 },
-  { id:4, manv:'NVP0003', hoten:'Phạm Gia Dũng',  loai:'Part-time', maca:'C02', tenca:'Ca chiều',batdau:'13:00', ketthuc:'17:00', checkin:null,   checkout:null,   muon:0, vesom:0 },
-  { id:5, manv:'NVP0004', hoten:'Lê Thị Bình',    loai:'Part-time', maca:'C02', tenca:'Ca chiều',batdau:'13:00', ketthuc:'17:00', checkin:'13:02', checkout:'16:35', muon:0, vesom:1 },
-  { id:6, manv:'NVF0002', hoten:'Đoàn Lan Anh',   loai:'Full-time', maca:'C02', tenca:'Ca chiều',batdau:'13:00', ketthuc:'17:00', checkin:'13:00', checkout:'17:00', muon:0, vesom:0 },
-  { id:7, manv:'NVP0005', hoten:'Vũ Quốc Huy',    loai:'Part-time', maca:'C03', tenca:'Ca tối',  batdau:'17:00', ketthuc:'21:00', checkin:'17:03', checkout:'21:00', muon:0, vesom:0 },
-  { id:8, manv:'NVP0006', hoten:'Bùi Thu Hằng',   loai:'Part-time', maca:'C03', tenca:'Ca tối',  batdau:'17:00', ketthuc:'21:00', checkin:null,   checkout:null,   muon:0, vesom:0 },
-];
-
-/* ---------- HELPERS ---------- */
-function todayStr() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
-}
-
-function fmtDateVN(str) {
-  if (!str) return '—';
-  const [y, m, d] = str.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function calcDuration(ci, co) {
-  if (!ci || !co) return null;
-  const [h1,m1] = ci.split(':').map(Number);
-  const [h2,m2] = co.split(':').map(Number);
-  const mins = (h2*60+m2) - (h1*60+m1);
-  if (mins <= 0) return null;
-  const h = Math.floor(mins/60), m = mins%60;
-  return `${h}h ${String(m).padStart(2,'0')}p`;
-}
-
-function initials(name) {
-  return (name||'?').split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
-}
-
-function getStatus(row) {
-  if (!row.checkin)  return { label:'Vắng',           cls:'badge-red',   code:'vang' };
-  if (row.muon && row.vesom) return { label:'Muộn & Về sớm', cls:'badge-amber', code:'muon' };
-  if (row.muon)      return { label:'Đi muộn',        cls:'badge-amber', code:'muon' };
-  if (row.vesom)     return { label:'Về sớm',         cls:'badge-amber', code:'vesom' };
-  return               { label:'Đúng giờ',          cls:'badge-green', code:'dunggio' };
-}
-
-/* ---------- LOAD DATA ---------- */
-async function loadData() {
-  showLoading(true);
-
-  // TODO: thay bằng API call khi backend xong
-  // const res = await apiFetch(`/api/chamcong?ngay=${currentDate}`);
-  // allRows = res.data || [];
-  await new Promise(r => setTimeout(r, 400)); // giả lập latency
-  allRows = MOCK_DATA;
-
-  showLoading(false);
-  applyFilters();
-  updateStats();
-  updateTableHeading();
-}
-
-async function loadCaList() {
-  // TODO: await apiFetch('/api/calm')
-  caList = MOCK_CA;
-  const sel = document.getElementById('filter-ca');
-  caList.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.maca;
-    opt.textContent = `${c.tenca} (${c.batdau}–${c.ketthuc})`;
-    sel.appendChild(opt);
-  });
-}
-
-/* ---------- FILTERS ---------- */
-function applyFilters() {
-  const ca     = document.getElementById('filter-ca').value;
-  const tt     = document.getElementById('filter-tt').value;
-  const search = document.getElementById('filter-search').value.trim().toLowerCase();
-
-  filteredRows = allRows.filter(r => {
-    if (ca && r.maca !== ca) return false;
-    if (tt) {
-      const st = getStatus(r).code;
-      if (tt === 'chuacheckin' && r.checkin) return false;
-      if (tt === 'chuacheckin') return !r.checkin;
-      if (tt !== st && !(tt === 'muon' && r.muon) && !(tt === 'vesom' && r.vesom)) {
-        if (tt !== st) return false;
-      }
-    }
-    if (search && !r.hoten.toLowerCase().includes(search) &&
-        !r.manv.toLowerCase().includes(search)) return false;
-    return true;
-  });
-
-  currentPage = 1;
-  renderTable();
-}
-
-/* ---------- STATS ---------- */
-function updateStats() {
-  const total   = allRows.length;
-  const ok      = allRows.filter(r => r.checkin && !r.muon && !r.vesom).length;
-  const late    = allRows.filter(r => r.muon || r.vesom).length;
-  const absent  = allRows.filter(r => !r.checkin).length;
-
-  document.getElementById('stat-total').textContent  = total;
-  document.getElementById('stat-ok').textContent     = ok;
-  document.getElementById('stat-late').textContent   = late;
-  document.getElementById('stat-absent').textContent = absent;
-}
-
-function updateTableHeading() {
-  const el = document.getElementById('table-heading');
-  el.textContent = `Chấm công ngày ${fmtDateVN(currentDate)}`;
-}
-
-/* ---------- RENDER TABLE ---------- */
-function renderTable() {
-  const tbody = document.getElementById('cc-tbody');
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const page  = filteredRows.slice(start, start + PAGE_SIZE);
-
-  document.getElementById('table-count').textContent =
-    filteredRows.length ? `(${filteredRows.length} bản ghi)` : '';
-
-  if (filteredRows.length === 0) {
-    tbody.innerHTML = `<tr class="no-data"><td colspan="7">
-      <div style="font-size:32px;margin-bottom:8px;">📭</div>
-      Không có dữ liệu phù hợp với bộ lọc
-    </td></tr>`;
-    renderPagination();
-    return;
-  }
-
-  tbody.innerHTML = page.map(row => {
-    const st  = getStatus(row);
-    const dur = calcDuration(row.checkin, row.checkout);
-    const av  = initials(row.hoten);
-
-    const ciClass  = !row.checkin  ? 'miss' : row.muon  ? 'badge-amber' : '';
-    const coClass  = !row.checkout ? 'miss' : row.vesom ? 'badge-amber' : '';
-
-    return `<tr data-id="${row.id}">
-      <td>
-        <div class="avatar-cell">
-          <div class="avatar-sm" style="${avatarColor(row.manv)}">${av}</div>
-          <div>
-            <div class="av-name">${row.hoten}</div>
-            <div class="av-code">${row.manv} · ${row.loai}</div>
-          </div>
-        </div>
-      </td>
-      <td>
-        <div style="font-weight:600;font-size:13px;">${row.tenca}</div>
-        <div style="font-size:11px;color:var(--ink-muted);">${row.batdau}–${row.ketthuc}</div>
-      </td>
-      <td class="time-cell ${row.checkin ? '' : 'miss'}">
-        ${row.checkin
-          ? `<span class="${row.muon ? 'badge badge-amber' : ''}">${row.checkin}</span>`
-          : '—'}
-      </td>
-      <td class="time-cell ${row.checkout ? '' : 'miss'}">
-        ${row.checkout
-          ? `<span class="${row.vesom ? 'badge badge-amber' : ''}">${row.checkout}</span>`
-          : row.checkin ? '<span style="color:var(--ink-muted);font-style:italic;">Chưa checkout</span>' : '—'}
-      </td>
-      <td class="hide-sm">
-        ${dur ? `<span class="duration-pill">${dur}</span>` : '<span style="color:var(--ink-muted);">—</span>'}
-      </td>
-      <td><span class="badge ${st.cls}">${st.label}</span></td>
-      <td>
-        <div class="row-actions">
-          <button class="btn-edit-row" onclick="openEdit(${row.id})" title="Chỉnh sửa chấm công">
-            ✏️ Sửa
-          </button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  renderPagination();
-}
-
-function avatarColor(code) {
-  const colors = ['#1D9E75','#2980B9','#8E44AD','#E67E22','#27AE60','#C0392B','#16A085','#D35400'];
-  const i = code.charCodeAt(code.length-1) % colors.length;
-  return `background:${colors[i]};`;
-}
-
-/* ---------- PAGINATION ---------- */
-function renderPagination() {
-  const total  = filteredRows.length;
-  const pages  = Math.ceil(total / PAGE_SIZE);
-  const start  = Math.min((currentPage-1)*PAGE_SIZE + 1, total);
-  const end    = Math.min(currentPage*PAGE_SIZE, total);
-
-  document.getElementById('page-info').textContent =
-    total ? `Hiển thị ${start}–${end} / ${total}` : '';
-
-  const pg = document.getElementById('pagination');
-  if (pages <= 1) { pg.innerHTML = ''; return; }
-
-  let html = '';
-  for (let p = 1; p <= pages; p++) {
-    html += `<button class="page-btn ${p===currentPage?'active':''}"
-               onclick="goPage(${p})">${p}</button>`;
-  }
-  pg.innerHTML = html;
-}
-
-function goPage(p) { currentPage = p; renderTable(); }
-
-/* ---------- LOADING ---------- */
-function showLoading(on) {
-  document.getElementById('tbl-loading').style.display = on ? 'block' : 'none';
-}
-
-/* ---------- EDIT MODAL ---------- */
-function openEdit(id) {
-  editingRow = allRows.find(r => r.id === id);
-  if (!editingRow) return;
-
-  document.getElementById('edit-nv-name').textContent  = editingRow.hoten;
-  document.getElementById('edit-ca-name').textContent  = editingRow.tenca;
-  document.getElementById('edit-ngay').textContent     = fmtDateVN(currentDate);
-  document.getElementById('edit-quydinh-text').textContent =
-    `${editingRow.tenca} · ${editingRow.batdau} – ${editingRow.ketthuc}`;
-
-  document.getElementById('edit-checkin').value  = editingRow.checkin  || '';
-  document.getElementById('edit-checkout').value = editingRow.checkout || '';
-  document.getElementById('edit-lydo').value     = '';
-
-  // Clear errors
-  ['err-checkin','err-checkout','err-lydo'].forEach(id => {
-    document.getElementById(id).textContent = '';
-  });
-
-  // Audit log mock
-  const auditSec = document.getElementById('audit-section');
-  if (editingRow.checkin) {
-    document.getElementById('audit-list').innerHTML = `
-      <div class="audit-row">
-        <span class="audit-time">—</span>
-        <span class="audit-body">Chưa có lịch sử chỉnh sửa</span>
-      </div>`;
-    auditSec.style.display = 'block';
-  } else {
-    auditSec.style.display = 'none';
-  }
-
-  openModal('modal-edit');
-  setTimeout(() => document.getElementById('edit-checkin').focus(), 100);
-}
-
-function validateEdit() {
-  let ok = true;
-  const ci   = document.getElementById('edit-checkin').value;
-  const co   = document.getElementById('edit-checkout').value;
-  const lydo = document.getElementById('edit-lydo').value.trim();
-
-  document.getElementById('err-checkin').textContent  = '';
-  document.getElementById('err-checkout').textContent = '';
-  document.getElementById('err-lydo').textContent     = '';
-
-  if (!ci) {
-    document.getElementById('err-checkin').textContent = 'Vui lòng nhập giờ check-in';
-    ok = false;
-  }
-  if (ci && co && co <= ci) {
-    document.getElementById('err-checkout').textContent = 'Giờ check-out phải sau giờ check-in';
-    ok = false;
-  }
-  if (!lydo) {
-    document.getElementById('err-lydo').textContent = 'Lý do chỉnh sửa là bắt buộc';
-    ok = false;
-  }
-  return ok;
-}
-
-async function saveEdit() {
-  if (!validateEdit()) return;
-  if (!editingRow) return;
-
-  const btn = document.getElementById('btn-save-edit');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Đang lưu…';
-
-  const ci   = document.getElementById('edit-checkin').value;
-  const co   = document.getElementById('edit-checkout').value;
-  const lydo = document.getElementById('edit-lydo').value.trim();
-
-  // TODO: await apiFetch(`/api/chamcong/${editingRow.id}`, 'PUT', { checkin: ci, checkout: co, lydo })
-  await new Promise(r => setTimeout(r, 600)); // giả lập API
-
-  // Cập nhật local state
-  const idx = allRows.findIndex(r => r.id === editingRow.id);
-  if (idx !== -1) {
-    allRows[idx].checkin  = ci;
-    allRows[idx].checkout = co;
-    // Tính lại trạng thái
-    const [bh, bm] = editingRow.batdau.split(':').map(Number);
-    const [kh, km] = editingRow.ketthuc.split(':').map(Number);
-    const [cih, cim] = ci.split(':').map(Number);
-    const [coh, com] = co.split(':').map(Number);
-    allRows[idx].muon  = (cih*60+cim) > (bh*60+bm) ? 1 : 0;
-    allRows[idx].vesom = (coh*60+com) < (kh*60+km) ? 1 : 0;
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = 'Lưu thay đổi';
-  closeModal('modal-edit');
-  applyFilters();
-  updateStats();
-  showToast(`Đã cập nhật chấm công cho ${editingRow.hoten}`, 'success');
-}
-
-/* ---------- DATE NAVIGATOR ---------- */
-function shiftDate(delta) {
-  const d = new Date(currentDate);
-  d.setDate(d.getDate() + delta);
-  currentDate = d.toISOString().slice(0, 10);
-  document.getElementById('filter-date').value = currentDate;
-  loadData();
-}
-
-/* ---------- EXPORT (stub) ---------- */
-function exportReport() {
-  showToast('Tính năng xuất báo cáo sẽ có ở giai đoạn 3', 'info');
-}
-
-/* ---------- INIT ---------- */
-initLayout(['quanly']).then(async user => {
-  if (!user) return;
-
-  // Đặt ngày mặc định = hôm nay
-  document.getElementById('filter-date').value = currentDate;
-
-  // Load danh sách ca vào filter
-  await loadCaList();
-
-  // Load dữ liệu chấm công
-  await loadData();
-
-  // Event listeners
-  document.getElementById('filter-date').addEventListener('change', e => {
-    currentDate = e.target.value;
-    loadData();
-  });
-  document.getElementById('btn-prev-day').addEventListener('click', () => shiftDate(-1));
-  document.getElementById('btn-next-day').addEventListener('click', () => shiftDate(+1));
-  document.getElementById('filter-ca').addEventListener('change', applyFilters);
-  document.getElementById('filter-tt').addEventListener('change', applyFilters);
-  document.getElementById('filter-search').addEventListener('input',
-    debounce(applyFilters, 250));
-  document.getElementById('btn-export').addEventListener('click', exportReport);
-
-  // Đóng modal khi click nền
-  document.getElementById('modal-edit').addEventListener('click', e => {
-    if (e.target === document.getElementById('modal-edit')) closeModal('modal-edit');
-  });
-});
-
-function debounce(fn, ms) {
-  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-}
-</script>
 </body>
 </html>
-
-<!--Khi kết nối API (Giai đoạn 3):
- Chỉ cần thay 3 chỗ được đánh dấu TODO:
-js// 1. Load dữ liệu
-const res = await apiFetch(`/api/chamcong?ngay=${currentDate}`);
-
-2. Load ca làm
-caList = await apiFetch('/api/calm');
-
-3. Lưu chỉnh sửa
-await apiFetch(`/api/chamcong/${editingRow.id}`, 'PUT', { checkin, checkout, lydo });
-//Xóa MOCK_DATAvà MOCK_CAlà xong — phần còn lại không cần sửa. -->
