@@ -24,6 +24,7 @@ function navigate(page) {
   };
   const titleEl = document.getElementById('header-title');
   if (titleEl && titleMap[page]) titleEl.textContent = titleMap[page];
+  closeMobileSidebar();
 }
 
 // ---- Modal helpers ----
@@ -104,4 +105,14 @@ function getWeekDates(offset = 0) {
 }
 function fmtDate(d) {
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// ---- Mobile sidebar ----
+function toggleMobileSidebar() {
+  document.querySelector('.sidebar')?.classList.toggle('open');
+  document.querySelector('.mobile-overlay')?.classList.toggle('open');
+}
+function closeMobileSidebar() {
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.querySelector('.mobile-overlay')?.classList.remove('open');
 }

@@ -1,4 +1,5 @@
 /* ===== HYGGE NỘI THẤT – Design Tokens ===== */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
 :root {
   /* Brand palette */
   --ink:       #1A1A1A;
@@ -10,9 +11,9 @@
   --border:    #E2DED8;
   --border-strong: #C8C2BA;
 
-  --accent:    #2C3E50;      /* deep navy */
-  --accent-2:  #34495E;
-  --accent-light: #EBF0F5;
+  --accent:       #1D9E75;
+  --accent-2:     #0F6E56;
+  --accent-light: #E1F5EE;
 
   --green:     #27AE60;
   --green-bg:  #E8F8EE;
@@ -31,7 +32,7 @@
   --shadow-lg: 0 8px 24px rgba(0,0,0,.12);
 
   /* Typography */
-  --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
@@ -43,39 +44,24 @@ body { font-family: var(--font); color: var(--ink); background: var(--surface-2)
 .app-shell { display: flex; height: 100vh; overflow: hidden; }
 
 /* Sidebar */
-.sidebar {
-  width: var(--sidebar-w);
-  background: var(--ink);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow-y: auto;
-  z-index: 100;
+.sidebar { 
+  background: var(--surface); 
+  color: var(--ink);
+  border-right: 1px solid var(--border);
 }
-.sidebar-logo {
-  padding: 20px 18px 16px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+.sidebar-logo .brand { color: var(--ink); }
+.sidebar-logo .sub   { color: var(--ink-muted); opacity: 1; }
+.sidebar-section-label { color: var(--ink-muted); }
+.sidebar-item { color: var(--ink-soft); }
+.sidebar-item:hover { 
+  background: var(--surface-2); 
+  color: var(--ink); 
 }
-.sidebar-logo .brand { font-size: 16px; font-weight: 700; letter-spacing: .05em; }
-.sidebar-logo .sub   { font-size: 9px; letter-spacing: .18em; text-transform: uppercase; opacity: .5; margin-top: 2px; }
-
-.sidebar-section { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
-.sidebar-section-label {
-  font-size: 9px; font-weight: 600; letter-spacing: .12em;
-  text-transform: uppercase; color: rgba(255,255,255,.35);
-  padding: 0 18px 6px;
+.sidebar-item.active { 
+  background: var(--accent-light); 
+  color: var(--accent); 
+  border-left-color: var(--accent); 
 }
-.sidebar-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 18px; cursor: pointer; font-size: 13px;
-  color: rgba(255,255,255,.7); border-left: 3px solid transparent;
-  transition: all .15s;
-  text-decoration: none;
-}
-.sidebar-item:hover { background: rgba(255,255,255,.07); color: #fff; }
-.sidebar-item.active { background: rgba(255,255,255,.1); color: #fff; border-left-color: #fff; }
-.sidebar-item .icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
 
 /* Main area */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -236,7 +222,7 @@ tbody tr:last-child td { border-bottom: none; }
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); }
-.stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; color: var(--ink); }
+.stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; color: var(--ink); }
 .stat-sub   { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
 
 /* Empty state */
@@ -323,3 +309,88 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ===== HISTORY TABLE ===== */
 .history-month-label { font-size: 12px; font-weight: 600; color: var(--ink-muted); padding: 6px 0 2px; }
+
+/* ===== SIDE PANEL ===== */
+.side-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.35); z-index: 400;
+}
+.side-overlay.open { display: block; }
+
+.side-panel {
+  position: fixed; top: 0; right: -520px; width: 480px;
+  height: 100vh; background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); z-index: 450;
+  display: flex; flex-direction: column;
+  transition: right .25s ease;
+  max-width: 95vw;
+}
+.side-panel.open { right: 0; }
+.side-panel-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.side-panel-title { font-size: 14px; font-weight: 600; }
+.side-panel-body  { padding: 20px; overflow-y: auto; flex: 1; }
+.side-panel-footer {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+}
+
+/* ===== LOADING ===== */
+.skeleton {
+  background: linear-gradient(
+    90deg, var(--surface-2) 25%, 
+    var(--surface-3) 50%, 
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer { 
+  0%   { background-position: 200% 0; } 
+  100% { background-position: -200% 0; } 
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== RESPONSIVE ===== */
+.header-menu-btn { display: none; }
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; left: -240px; top: 0;
+    height: 100vh; z-index: 300;
+    transition: left .25s ease;
+  }
+  .sidebar.open { left: 0; }
+
+  .mobile-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.4); z-index: 299;
+  }
+  .mobile-overlay.open { display: block; }
+
+  .header-menu-btn {
+    display: flex; background: none; border: none;
+    font-size: 20px; cursor: pointer; color: var(--ink);
+    align-items: center; margin-right: 8px;
+  }
+
+  .content     { padding: 16px; }
+  .stat-grid   { grid-template-columns: 1fr 1fr; }
+  .form-row    { grid-template-columns: 1fr; }
+  .modal       { width: 95vw; }
+  .side-panel  { width: 100vw; }
+  .hide-mobile { display: none; }
+}
