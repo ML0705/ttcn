@@ -96,8 +96,15 @@
 }
 
 .stat-pill {
-  border-left: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
 }
 .pill-icon {
   width: 40px;
@@ -108,10 +115,6 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.stat-pill.accent .pill-icon { background: var(--accent-light); color: var(--accent); }
-.stat-pill.green  .pill-icon { background: var(--green-bg);     color: var(--green); }
-.stat-pill.amber  .pill-icon { background: var(--amber-bg);     color: var(--amber); }
-.stat-pill.red    .pill-icon { background: var(--red-bg);       color: var(--red); }
 
 
 /* ── Table card ── */
@@ -163,8 +166,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent-light) !important;
-  color: var(--accent-2);
+  background: #fff;
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
   display: flex;

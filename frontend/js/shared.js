@@ -84,7 +84,7 @@ function renderSidebar(role) {
       const active = currentPath === item.href ? ' active' : '';
       html += `
         <a class="sidebar-item${active}" href="${item.href}">
-          <span>${item.icon}</span> ${item.label}
+          ${item.label}
         </a>`;
     });
   });
