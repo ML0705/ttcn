@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HYGGE NỘI THẤT – Đăng nhập</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1A1A1A; --ink-soft: #4A4A4A; --ink-muted: #8A8A8A;
+  --surface: #FFFFFF; --surface-2: #F7F6F4; --surface-3: #EFEDE9;
+  --border: #E2DED8; --accent: #2C3E50; --accent-2: #34495E;
+  --red: #E74C3C; --red-bg: #FDECEA; --green: #27AE60;
+  --radius: 8px; --radius-sm: 4px; --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+  --font: 'Inter', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--surface-2); min-height: 100vh; display: flex; }
+
+.auth-split { display: flex; width: 100%; min-height: 100vh; }
+
+/* Left panel – brand */
+.auth-brand {
+  width: 45%; background: var(--accent); color: #fff;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 40px; position: relative; overflow: hidden;
+}
+.auth-brand::before {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.brand-logo   { position: relative; text-align: center; }
+.brand-name   { font-size: 32px; font-weight: 700; letter-spacing: .1em; }
+.brand-sub    { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; opacity: .6; margin-top: 4px; }
+.brand-tagline { font-size: 15px; margin-top: 32px; opacity: .8; line-height: 1.7; text-align: center; max-width: 280px; position: relative; }
+
+/* Right panel – form */
+.auth-form-wrap {
+  width: 55%; display: flex; align-items: center; justify-content: center;
+  padding: 40px 60px;
+}
+.auth-card  { width: 100%; max-width: 380px; }
+.auth-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.auth-desc  { font-size: 13px; color: var(--ink-muted); margin-bottom: 28px; }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--ink-soft); }
+.form-control {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font);
+  color: var(--ink); background: var(--surface); transition: border-color .15s;
+}
+.form-control:focus { outline: none; border-color: var(--accent); }
+.form-control.error { border-color: var(--red); }
+.form-error { font-size: 11px; color: var(--red); margin-top: 4px; display: none; }
+.form-error.show { display: block; }
+
+.pw-wrap { position: relative; }
+.pw-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: 15px; color: var(--ink-muted);
+}
+
+.forgot-link { font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: none; float: right; margin-top: -8px; }
+
+.btn-auth {
+  width: 100%; padding: 11px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+  background: var(--accent); color: #fff; margin-top: 8px; transition: opacity .15s;
+}
+.btn-auth:hover { opacity: .9; }
+
+.divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.divider span { font-size: 12px; color: var(--ink-muted); }
+
+.btn-google {
+  width: 100%; padding: 10px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s;
+}
+.btn-google:hover { background: var(--surface-2); }
+
+.back-link { font-size: 13px; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 20px; }
+
+/* Steps / progress */
+.recovery-steps { display: flex; gap: 0; margin-bottom: 28px; position: relative; }
+.recovery-steps::before {
+  content: ''; position: absolute; top: 12px; left: 0; right: 0; height: 2px;
+  background: var(--border); z-index: 0;
+}
+.step-item { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+.step-dot  {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surface); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--ink-muted);
+}
+.step-dot.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+.step-dot.done   { border-color: var(--green); background: var(--green); color: #fff; }
+.step-label { font-size: 10px; margin-top: 4px; color: var(--ink-muted); }
+.step-label.active { color: var(--accent); font-weight: 600; }
+
+/* OTP input */
+.otp-row { display: flex; gap: 8px; margin: 8px 0; }
+.otp-input {
+  flex: 1; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 700;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: monospace;
+}
+.otp-input:focus { border-color: var(--accent); outline: none; }
+
+/* Alert */
+.alert-error {
+  background: var(--red-bg); border: 1px solid #F5B7B1;
+  color: var(--red); border-radius: var(--radius-sm); padding: 10px 12px;
+  font-size: 13px; margin-bottom: 14px; display: none;
+}
+.alert-error.show { display: block; }
+.alert-success {
+  background: #E8F8EE; border: 1px solid #A9DFBF;
+  color: var(--green); border-radius: var(--radius-sm); padding: 10px 12px;
+  font-size: 13px; margin-bottom: 14px; display: none;
+}
+.alert-success.show { display: block; }
+
+/* Pages */
+.auth-page { display: none; }
+.auth-page.active { display: block; }
+
+@media (max-width: 640px) {
+  .auth-brand { display: none; }
+  .auth-form-wrap { width: 100%; padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+<div class="auth-split">
+  <!-- Brand -->
+  <div class="auth-brand">
+    <div class="brand-logo">
+      <div class="brand-name">HYGGE</div>
+      <div class="brand-sub">NỘI THẤT</div>
+      <div class="brand-tagline">Hệ thống quản lý nhân sự & chấm công thông minh cho chuỗi cửa hàng nội thất.</div>
+    </div>
+  </div>
+
+  <!-- Form area -->
+  <div class="auth-form-wrap">
+
+    <!-- LOGIN -->
+    <div class="auth-card" id="page-login" style="display:block;">
+      <div class="auth-title">Chào mừng trở lại 👋</div>
+      <div class="auth-desc">Đăng nhập để tiếp tục quản lý lịch làm việc.</div>
+
+      <div id="login-error" class="alert-error">Thông tin đăng nhập không chính xác. Vui lòng thử lại.</div>
+
+      <div class="form-group">
+        <label class="form-label">Email hoặc số điện thoại</label>
+        <input type="text" id="login-user" class="form-control" placeholder="Nhập email hoặc số điện thoại">
+        <div class="form-error" id="err-user">Vui lòng nhập tài khoản.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mật khẩu <a class="forgot-link" onclick="showRecovery()">Quên mật khẩu?</a></label>
+        <div class="pw-wrap">
+          <input type="password" id="login-pw" class="form-control" placeholder="Nhập mật khẩu">
+          <button class="pw-toggle" onclick="togglePw('login-pw',this)">👁</button>
+        </div>
+        <div class="form-error" id="err-pw">Vui lòng nhập mật khẩu.</div>
+      </div>
+
+      <button class="btn-auth" onclick="doLogin()">Đăng nhập</button>
+
+      <div class="divider"><span>hoặc đăng nhập với</span></div>
+      <button class="btn-google">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.27 9.44A7.13 7.13 0 0 1 12 4.84c1.73 0 3.28.64 4.5 1.68l3.36-3.36A11.94 11.94 0 0 0 12 0C7.38 0 3.4 2.7 1.37 6.65l3.9 2.79z"/><path fill="#34A853" d="M16.04 18.01A7.06 7.06 0 0 1 12 19.16a7.13 7.13 0 0 1-6.73-4.72L1.37 17.35A11.94 11.94 0 0 0 12 24c2.93 0 5.73-1.05 7.86-2.99l-3.82-2.99z"/><path fill="#4A90D9" d="M23.49 12.27c0-.79-.07-1.56-.2-2.27H12v4.29h6.45a5.51 5.51 0 0 1-2.38 3.62l3.82 2.99C21.98 18.92 23.49 15.82 23.49 12.27z"/><path fill="#FBBC05" d="M5.27 14.44a7.18 7.18 0 0 1 0-4.88l-3.9-2.79A11.96 11.96 0 0 0 0 12c0 1.93.46 3.76 1.27 5.35l3.9-2.91z"/></svg>
+        Đăng nhập với Google
+      </button>
+    </div>
+
+    <!-- RECOVERY -->
+    <div class="auth-card" id="page-recovery" style="display:none;">
+      <a class="back-link" onclick="showLogin()">← Quay lại đăng nhập</a>
+      <div class="auth-title">Khôi phục tài khoản</div>
+      <div class="auth-desc">Nhập email hoặc số điện thoại để nhận hướng dẫn đặt lại mật khẩu.</div>
+
+      <div class="recovery-steps">
+        <div class="step-item">
+          <div class="step-dot active" id="step1-dot">1</div>
+          <div class="step-label active">Xác minh</div>
+        </div>
+        <div class="step-item">
+          <div class="step-dot" id="step2-dot">2</div>
+          <div class="step-label">Nhập OTP</div>
+        </div>
+        <div class="step-item">
+          <div class="step-dot" id="step3-dot">3</div>
+          <div class="step-label">Mật khẩu mới</div>
+        </div>
+      </div>
+
+      <!-- Step 1 -->
+      <div id="recovery-step1">
+        <div class="form-group">
+          <label class="form-label">Email hoặc số điện thoại</label>
+          <input type="text" id="rec-contact" class="form-control" placeholder="Nhập email hoặc SĐT của bạn">
+          <div class="form-error show" id="err-contact" style="display:none">Tài khoản không tồn tại.</div>
+        </div>
+        <button class="btn-auth" onclick="sendOTP()">Gửi hướng dẫn</button>
+      </div>
+
+      <!-- Step 2 -->
+      <div id="recovery-step2" style="display:none;">
+        <div class="auth-desc">Nhập mã xác nhận đã gửi tới số điện thoại của bạn.</div>
+        <div class="otp-row">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,0)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,1)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,2)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,3)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,4)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,5)">
+        </div>
+        <div id="err-otp" class="alert-error">Mã xác nhận không chính xác.</div>
+        <button class="btn-auth" onclick="verifyOTP()">Xác nhận mã</button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--ink-muted)">
+          Chưa nhận được mã? <a style="color:var(--accent);cursor:pointer" onclick="sendOTP()">Gửi lại</a>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="recovery-step3" style="display:none;">
+        <div id="rec-success" class="alert-success">✓ Mở khóa tài khoản thành công! Hãy đăng nhập lại.</div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu mới</label>
+          <div class="pw-wrap">
+            <input type="password" id="new-pw" class="form-control" placeholder="Tối thiểu 8 ký tự, gồm chữ và số">
+            <button class="pw-toggle" onclick="togglePw('new-pw',this)">👁</button>
+          </div>
+          <div class="form-error" id="err-newpw">Mật khẩu phải có ít nhất 8 ký tự gồm cả chữ và số.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Xác nhận mật khẩu</label>
+          <input type="password" id="confirm-pw" class="form-control" placeholder="Nhập lại mật khẩu mới">
+          <div class="form-error" id="err-confirmpw">Mật khẩu không khớp.</div>
+        </div>
+        <button class="btn-auth" onclick="resetPw()">Xác nhận</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showRecovery() {
+  document.getElementById('page-login').style.display = 'none';
+  document.getElementById('page-recovery').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('page-login').style.display = 'block';
+  document.getElementById('page-recovery').style.display = 'none';
+}
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pw').value;
+  let ok = true;
+  if (!u) { document.getElementById('err-user').classList.add('show'); ok = false; }
+  else     { document.getElementById('err-user').classList.remove('show'); }
+  if (!p) { document.getElementById('err-pw').classList.add('show'); ok = false; }
+  else    { document.getElementById('err-pw').classList.remove('show'); }
+  if (!ok) return;
+  // Demo: admin credentials
+  if ((u === 'admin' || u === 'quan.ly@hygge.vn') && p === 'Admin123') {
+    window.location.href = 'manager.html';
+  } else if ((u === 'nv01' || u === 'nv@hygge.vn') && p === 'Nv12345!') {
+    window.location.href = 'employee.html';
+  } else {
+    document.getElementById('login-error').classList.add('show');
+  }
+}
+function sendOTP() {
+  const c = document.getElementById('rec-contact').value.trim();
+  if (!c) { document.getElementById('err-contact').style.display = 'block'; return; }
+  document.getElementById('err-contact').style.display = 'none';
+  document.getElementById('recovery-step1').style.display = 'none';
+  document.getElementById('recovery-step2').style.display = 'block';
+  document.getElementById('step1-dot').classList.remove('active');
+  document.getElementById('step1-dot').classList.add('done');
+  document.getElementById('step1-dot').textContent = '✓';
+  document.getElementById('step2-dot').classList.add('active');
+}
+function moveOtp(el, idx) {
+  if (el.value && idx < 5) {
+    document.querySelectorAll('.otp-input')[idx+1].focus();
+  }
+}
+function verifyOTP() {
+  const vals = [...document.querySelectorAll('.otp-input')].map(i => i.value).join('');
+  if (vals !== '123456' && vals.length < 6) { document.getElementById('err-otp').classList.add('show'); return; }
+  document.getElementById('err-otp').classList.remove('show');
+  document.getElementById('recovery-step2').style.display = 'none';
+  document.getElementById('recovery-step3').style.display = 'block';
+  document.getElementById('step2-dot').classList.remove('active');
+  document.getElementById('step2-dot').classList.add('done');
+  document.getElementById('step2-dot').textContent = '✓';
+  document.getElementById('step3-dot').classList.add('active');
+}
+function resetPw() {
+  const p1 = document.getElementById('new-pw').value;
+  const p2 = document.getElementById('confirm-pw').value;
+  let ok = true;
+  if (p1.length < 8 || !/[a-zA-Z]/.test(p1) || !/[0-9]/.test(p1)) {
+    document.getElementById('err-newpw').classList.add('show'); ok = false;
+  } else { document.getElementById('err-newpw').classList.remove('show'); }
+  if (p1 !== p2) { document.getElementById('err-confirmpw').classList.add('show'); ok = false; }
+  else            { document.getElementById('err-confirmpw').classList.remove('show'); }
+  if (!ok) return;
+  document.getElementById('step3-dot').classList.add('done');
+  document.getElementById('step3-dot').textContent = '✓';
+  document.getElementById('rec-success').classList.add('show');
+  document.getElementById('new-pw').value = '';
+  document.getElementById('confirm-pw').value = '';
+  setTimeout(() => showLogin(), 2000);
+}
+// Demo hint
+document.getElementById('login-user').value = 'nv@hygge.vn';
+document.getElementById('login-pw').value = 'Nv12345!';
+</script>
+</body>
+</html>

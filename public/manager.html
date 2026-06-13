@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HYGGE – Quản lý</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+.page-view { display: none; }
+.page-view.active { display: block; }
+
+/* Side panel (form drawer) */
+.side-panel {
+  position: fixed; top: 0; right: -440px; width: 420px; height: 100vh;
+  background: var(--surface); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); z-index: 400; transition: right .25s ease;
+  display: flex; flex-direction: column;
+}
+.side-panel.open { right: 0; }
+.side-panel-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.side-panel-title { font-size: 14px; font-weight: 600; }
+.side-panel-body  { flex: 1; overflow-y: auto; padding: 20px; }
+.side-panel-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+#side-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:399; }
+#side-overlay.open { display:block; }
+
+/* Manager hero */
+.mgr-hero {
+  background: linear-gradient(135deg, var(--accent) 0%, #1a2a3a 100%);
+  color: #fff; border-radius: var(--radius); padding: 22px 28px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+}
+.mgr-hero-title { font-size: 18px; font-weight: 700; }
+.mgr-hero-sub   { font-size: 12px; opacity: .7; margin-top: 3px; }
+
+/* Week schedule overview */
+.wg-overview th { font-size: 11px; }
+.wg-count-cell  { padding: 8px 6px !important; cursor: pointer; }
+.wg-count-cell:hover { background: var(--accent-light) !important; }
+
+/* Dispatch modal */
+.dispatch-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dispatch-list { border: 1px solid var(--border); border-radius: var(--radius-sm); min-height: 140px; max-height: 240px; overflow-y: auto; }
+.dispatch-item {
+  padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.dispatch-item:last-child { border-bottom: none; }
+.dispatch-item .d-name { font-weight: 500; }
+.dispatch-item .d-code { font-size: 11px; color: var(--ink-muted); }
+
+/* Adjust edit modal */
+.edit-attendance-modal .modal { width: 520px; }
+
+/* Status dots */
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.dot-green  { background: var(--green); }
+.dot-red    { background: var(--red); }
+.dot-amber  { background: var(--amber); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">HYGGE</div>
+      <div class="sub">NỘI THẤT</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Tổng quan</div>
+      <a class="sidebar-item active" data-page="mgr-dashboard" onclick="navigate('mgr-dashboard')">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Quản lý hệ thống</div>
+      <a class="sidebar-item" data-page="branch" onclick="navigate('branch')">
+        <span class="icon">🏪</span> Quản lý chi nhánh
+      </a>
+      <a class="sidebar-item" data-page="accounts" onclick="navigate('accounts')">
+        <span class="icon">👥</span> Quản lý tài khoản
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Quản lý lịch & chấm công</div>
+      <a class="sidebar-item" data-page="shifts" onclick="navigate('shifts')">
+        <span class="icon">⏰</span> Quản lý ca làm
+      </a>
+      <a class="sidebar-item" data-page="schedule" onclick="navigate('schedule')">
+        <span class="icon">📊</span> Quản lý chấm công
+      </a>
+    </div>
+
+    <div style="margin-top:auto;padding:16px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="header-avatar">TQ</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#fff">Trần Minh Quân</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5)">Quản lý</div>
+        </div>
+      </div>
+      <a href="login.html" style="display:block;margin-top:12px;font-size:12px;color:rgba(255,255,255,.4);text-decoration:none">⬅ Đăng xuất</a>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="header">
+      <div class="header-title" id="header-title">Dashboard Quản lý</div>
+      <div class="header-right">
+        <div class="notif-wrap" onclick="toggleNotif()">
+          <button class="notif-btn">🔔</button>
+          <div class="notif-badge">4</div>
+          <div class="notif-dropdown" id="notif-dropdown">
+            <div class="notif-header"><span>Thông báo</span><span style="font-size:11px;color:var(--blue);font-weight:400;cursor:pointer">Đánh dấu tất cả đã đọc</span></div>
+            <div class="notif-list">
+              <div class="notif-item unread">
+                <div class="notif-name">Nguyễn Văn A</div>
+                <div class="notif-text">Đã gửi đăng ký ca làm tuần 20.</div>
+                <div class="notif-time">2 phút trước</div>
+              </div>
+              <div class="notif-item unread">
+                <div class="notif-name">Lê Thị B</div>
+                <div class="notif-text">Đã xuất đơn ca ngày 12/05.</div>
+                <div class="notif-time">15 phút trước</div>
+              </div>
+              <div class="notif-item unread">
+                <div class="notif-name">Phê duyệt đăng ký</div>
+                <div class="notif-text">Ca sáng tuần 19 chờ duyệt.</div>
+                <div class="notif-time">1 giờ trước</div>
+              </div>
+              <div class="notif-item unread">
+                <div class="notif-name">Nhắc nhở</div>
+                <div class="notif-text">Chưa chốt lịch ca làm tuần 20.</div>
+                <div class="notif-time">2 giờ trước</div>
+              </div>
+            </div>
+            <div class="notif-footer">Xem tất cả thông báo</div>
+          </div>
+        </div>
+        <div class="header-avatar">TQ</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ========== MANAGER DASHBOARD ========== -->
+      <div class="page-view active" id="page-mgr-dashboard">
+        <div class="mgr-hero">
+          <div>
+            <div class="mgr-hero-title">Xin chào, Trần Minh Quân 👋</div>
+            <div class="mgr-hero-sub">Chúc bạn một ngày làm việc hiệu quả!</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;opacity:.6" id="mgr-date"></div>
+            <div style="font-size:20px;font-weight:700" id="mgr-day"></div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">Tổng nhân viên</div><div class="stat-value">24</div><div class="stat-sub">4 chi nhánh</div></div>
+          <div class="stat-card"><div class="stat-label">Đi làm hôm nay</div><div class="stat-value">18</div><div class="stat-sub" style="color:var(--green)">+2 so với hôm qua</div></div>
+          <div class="stat-card"><div class="stat-label">Đăng ký tuần mới</div><div class="stat-value">16</div><div class="stat-sub">Còn 8 chờ duyệt</div></div>
+          <div class="stat-card"><div class="stat-label">Vắng mặt</div><div class="stat-value">2</div><div class="stat-sub" style="color:var(--red)">Chưa báo phép</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- Recent registrations -->
+          <div class="card">
+            <div class="card-title">Đăng ký ca làm chờ duyệt</div>
+            <table>
+              <thead><tr><th>Nhân viên</th><th>Ca</th><th>Ngày</th><th>Trạng thái</th></tr></thead>
+              <tbody>
+                <tr><td>Nguyễn Văn A</td><td>Ca sáng</td><td>19/05</td><td><span class="badge badge-amber">Chờ duyệt</span></td></tr>
+                <tr><td>Lê Thị B</td><td>Ca chiều</td><td>20/05</td><td><span class="badge badge-amber">Chờ duyệt</span></td></tr>
+                <tr><td>Trần Văn C</td><td>Ca tối</td><td>21/05</td><td><span class="badge badge-amber">Chờ duyệt</span></td></tr>
+                <tr><td>Phạm Thị D</td><td>Ca sáng</td><td>19/05</td><td><span class="badge badge-green">Đã duyệt</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Quick links -->
+          <div class="card">
+            <div class="card-title">Lối tắt nhanh</div>
+            <div class="shortcut-grid">
+              <div class="shortcut-item" onclick="navigate('schedule')"><div class="s-icon">📊</div><div><div class="s-title">Quản lý chấm công</div><div class="s-desc">Xem & chỉnh sửa chấm công</div></div></div>
+              <div class="shortcut-item" onclick="navigate('shifts')"><div class="s-icon">⏰</div><div><div class="s-title">Điều phối ca làm</div><div class="s-desc">Phân bổ & duyệt ca làm</div></div></div>
+              <div class="shortcut-item" onclick="navigate('accounts')"><div class="s-icon">👥</div><div><div class="s-title">Nhân viên</div><div class="s-desc">Quản lý tài khoản nhân viên</div></div></div>
+              <div class="shortcut-item" onclick="navigate('branch')"><div class="s-icon">🏪</div><div><div class="s-title">Chi nhánh</div><div class="s-desc">Quản lý hệ thống chi nhánh</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== BRANCH MANAGEMENT ========== -->
+      <div class="page-view" id="page-branch">
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="form-control" style="width:220px;padding-left:32px" placeholder="Tìm kiếm...">
+            </div>
+          </div>
+          <div class="page-bar-right">
+            <button class="btn btn-primary" onclick="openBranchForm()">＋ Thêm chi nhánh</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table id="branch-table">
+              <thead>
+                <tr><th>#</th><th>Mã CN</th><th>Tên chi nhánh</th><th>Địa chỉ</th><th>Quản lý</th><th>Trạng thái</th><th>Thao tác</th></tr>
+              </thead>
+              <tbody id="branch-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="branch-pages"></div>
+        </div>
+      </div>
+
+      <!-- ========== ACCOUNTS ========== -->
+      <div class="page-view" id="page-accounts">
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="form-control" style="width:220px;padding-left:32px" placeholder="Tìm kiếm nhân viên...">
+            </div>
+            <select class="form-control" style="width:auto">
+              <option>Tất cả loại</option><option>Full-time</option><option>Part-time</option>
+            </select>
+          </div>
+          <div class="page-bar-right">
+            <button class="btn btn-primary" onclick="openAccountForm()">＋ Thêm tài khoản</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Mã NV</th><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+              <tbody id="accounts-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="acc-pages"></div>
+        </div>
+      </div>
+
+      <!-- ========== SHIFTS ========== -->
+      <div class="page-view" id="page-shifts">
+        <div class="page-bar">
+          <div class="page-bar-left"><div style="font-size:14px;font-weight:600">Danh sách ca làm</div></div>
+          <div class="page-bar-right">
+            <button class="btn btn-primary" onclick="openShiftForm()">＋ Thêm ca làm</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Mã ca</th><th>Tên ca</th><th>Bắt đầu</th><th>Kết thúc</th><th>Số NV</th><th>Thao tác</th></tr></thead>
+              <tbody id="shifts-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SCHEDULE (ATTENDANCE MGMT) ========== -->
+      <div class="page-view" id="page-schedule">
+        <!-- Top half: branch list + filters -->
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px">
+          <!-- Branch list -->
+          <div class="card">
+            <div class="card-title">Danh sách chi nhánh</div>
+            <div id="branch-select-list"></div>
+          </div>
+
+          <!-- Week overview -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div class="card-title" style="margin:0">Bảng tổng quan ca làm theo tuần</div>
+              <div class="week-nav" style="display:flex;gap:8px;align-items:center">
+                <button class="btn btn-outline btn-sm" onclick="changeSchedWeek(-1)">‹</button>
+                <span style="font-size:13px;font-weight:600;min-width:180px;text-align:center" id="sched-week-label"></span>
+                <button class="btn btn-outline btn-sm" onclick="changeSchedWeek(1)">›</button>
+              </div>
+            </div>
+            <div class="week-grid-wrap">
+              <table class="week-grid wg-overview" id="sched-week-grid"></table>
+            </div>
+            <div style="font-size:11px;color:var(--ink-muted);margin-top:6px">* Nhấn vào ô để điều phối nhân sự</div>
+          </div>
+        </div>
+
+        <!-- Bottom: attendance list -->
+        <div class="card">
+          <div class="page-bar" style="margin-bottom:12px">
+            <div class="page-bar-left" style="font-size:14px;font-weight:600">Danh sách chấm công</div>
+            <div class="page-bar-right">
+              <select class="form-control" style="width:auto"><option>Tất cả chi nhánh</option><option>Cửa hàng Hà Nội</option><option>Cửa hàng Đà Nẵng</option></select>
+              <input type="date" class="form-control" style="width:auto" value="2025-05-12">
+              <select class="form-control" style="width:auto"><option>Tất cả ca</option><option>Ca sáng</option><option>Ca chiều</option><option>Ca tối</option></select>
+              <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="form-control" style="padding-left:30px;width:160px" placeholder="Tìm nhân viên..."></div>
+              <button class="btn btn-outline btn-sm">⬇ Xuất excel</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Nhân viên</th><th>Chi nhánh</th><th>Ca làm</th><th>Check-in</th><th>Check-out</th><th>Tổng giờ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+              <tbody id="sched-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="sched-pages"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ======== SIDE PANEL – BRANCH FORM ======== -->
+<div id="side-overlay" onclick="closeSidePanel('panel-branch');closeSidePanel('panel-account');closeSidePanel('panel-shift')"></div>
+
+<div class="side-panel" id="panel-branch">
+  <div class="side-panel-header">
+    <div class="side-panel-title" id="branch-form-title">Thêm chi nhánh</div>
+    <button class="modal-close" onclick="closeSidePanel('panel-branch')">✕</button>
+  </div>
+  <div class="side-panel-body">
+    <div class="form-group">
+      <label class="form-label">Tên chi nhánh *</label>
+      <input type="text" class="form-control" id="bf-name" placeholder="VD: Cửa hàng Hà Nội">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Địa chỉ *</label>
+      <input type="text" class="form-control" id="bf-addr" placeholder="Số nhà, đường, quận/huyện">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Số điện thoại *</label>
+      <input type="text" class="form-control" id="bf-phone" placeholder="0xxxxxxxxx">
+      <div class="form-error" id="bf-phone-err">Số điện thoại không hợp lệ.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Giờ mở cửa</label>
+        <input type="time" class="form-control" id="bf-open" value="08:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giờ đóng cửa</label>
+        <input type="time" class="form-control" id="bf-close" value="22:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Quản lý chi nhánh</label>
+      <select class="form-control" id="bf-mgr">
+        <option>Trần Minh Quân</option><option>Phạm Thị Lan</option><option>Lê Hoàng Nam</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Trạng thái</label>
+      <select class="form-control" id="bf-status">
+        <option value="active">Hoạt động</option>
+        <option value="inactive">Tạm ngưng</option>
+      </select>
+    </div>
+  </div>
+  <div class="side-panel-footer">
+    <button class="btn btn-outline" onclick="closeSidePanel('panel-branch')">Hủy</button>
+    <button class="btn btn-primary" onclick="saveBranch()">Lưu</button>
+  </div>
+</div>
+
+<!-- ======== SIDE PANEL – ACCOUNT FORM ======== -->
+<div class="side-panel" id="panel-account">
+  <div class="side-panel-header">
+    <div class="side-panel-title" id="acc-form-title">Thêm tài khoản</div>
+    <button class="modal-close" onclick="closeSidePanel('panel-account')">✕</button>
+  </div>
+  <div class="side-panel-body">
+    <div class="form-group">
+      <label class="form-label">Họ và tên *</label>
+      <input type="text" class="form-control" id="af-name" placeholder="Nguyễn Văn A">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" class="form-control" id="af-email" placeholder="email@hygge.vn">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số điện thoại *</label>
+        <input type="text" class="form-control" id="af-phone" placeholder="0xxxxxxxxx">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Loại nhân viên</label>
+        <select class="form-control" id="af-type">
+          <option value="full">Full-time</option>
+          <option value="part">Part-time</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chi nhánh</label>
+        <select class="form-control" id="af-branch">
+          <option>Cửa hàng Hà Nội</option><option>Cửa hàng Đà Nẵng</option>
+          <option>Cửa hàng HCM</option><option>Cửa hàng Cần Thơ</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mật khẩu *</label>
+      <input type="password" class="form-control" id="af-pw" placeholder="Tối thiểu 8 ký tự">
+      <div class="form-error" id="af-pw-err">Mật khẩu phải có ít nhất 8 ký tự gồm chữ và số.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Trạng thái</label>
+      <select class="form-control" id="af-status">
+        <option value="active">Hoạt động</option>
+        <option value="locked">Bị khóa</option>
+      </select>
+    </div>
+  </div>
+  <div class="side-panel-footer">
+    <button class="btn btn-outline" onclick="closeSidePanel('panel-account')">Hủy</button>
+    <button class="btn btn-primary" onclick="saveAccount()">Lưu</button>
+  </div>
+</div>
+
+<!-- ======== SIDE PANEL – SHIFT FORM ======== -->
+<div class="side-panel" id="panel-shift">
+  <div class="side-panel-header">
+    <div class="side-panel-title" id="shift-form-title">Thêm ca làm</div>
+    <button class="modal-close" onclick="closeSidePanel('panel-shift')">✕</button>
+  </div>
+  <div class="side-panel-body">
+    <div class="form-group">
+      <label class="form-label">Tên ca *</label>
+      <input type="text" class="form-control" id="sf-name" placeholder="VD: Ca sáng">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Giờ bắt đầu *</label>
+        <input type="time" class="form-control" id="sf-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giờ kết thúc *</label>
+        <input type="time" class="form-control" id="sf-end">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Số nhân viên tối thiểu</label>
+      <input type="number" class="form-control" id="sf-min" value="2" min="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <textarea class="form-control" id="sf-note" rows="3" placeholder="Mô tả ca làm..."></textarea>
+    </div>
+  </div>
+  <div class="side-panel-footer">
+    <button class="btn btn-outline" onclick="closeSidePanel('panel-shift')">Hủy</button>
+    <button class="btn btn-primary" onclick="saveShift()">Lưu</button>
+  </div>
+</div>
+
+<!-- ======== MODAL – EDIT ATTENDANCE ======== -->
+<div class="modal-overlay" id="modal-edit-att">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Chỉnh sửa chấm công</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-att')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px">
+        <strong id="ea-name">Nguyễn Văn A</strong>
+        <span style="color:var(--ink-muted)"> — Cửa hàng Hà Nội</span><br>
+        <span style="color:var(--ink-muted)" id="ea-date">Ca sáng, 12/05/2025</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ca làm</label>
+          <select class="form-control"><option>Ca sáng (08:00–12:00)</option><option>Ca chiều (13:00–17:00)</option><option>Ca tối (18:00–22:00)</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Check-in</label>
+          <input type="time" class="form-control" id="ea-ci" value="07:58">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Check-out</label>
+          <input type="time" class="form-control" id="ea-co" value="12:02">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select class="form-control">
+            <option>Đúng giờ</option><option>Muộn giờ</option><option>Về sớm</option><option>Vắng mặt</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ghi chú</label>
+        <input type="text" class="form-control" placeholder="Lý do chỉnh sửa...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-att')">Hủy</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-edit-att');showToast('Chỉnh sửa chấm công thành công!')">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MODAL – DISPATCH ======== -->
+<div class="modal-overlay" id="modal-dispatch">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Điều phối nhân sự — <span id="dispatch-title">Ca sáng 07/05/2025</span></div>
+      <button class="modal-close" onclick="closeModal('modal-dispatch')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;font-size:13px;display:flex;gap:20px;flex-wrap:wrap">
+        <span>📅 <strong>07/05/2025</strong></span>
+        <span>⏰ Ca sáng: <strong>08:00 – 12:00</strong></span>
+        <span>👥 Đã đăng ký: <strong id="dispatch-count">10/10</strong></span>
+      </div>
+      <div class="dispatch-two-col">
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--ink-soft)">Danh sách nhân viên đã chọn</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <div class="search-wrap" style="flex:1"><span class="search-icon" style="font-size:12px">🔍</span><input class="form-control" style="padding-left:28px;font-size:12px" placeholder="Tìm tên..."></div>
+          </div>
+          <div class="dispatch-list" id="dispatch-selected"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--ink-soft)">Đã chọn (<span id="dispatch-chosen-count">0</span>)</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <div class="search-wrap" style="flex:1"><span class="search-icon" style="font-size:12px">🔍</span><input class="form-control" style="padding-left:28px;font-size:12px" placeholder="Tìm tên..."></div>
+          </div>
+          <div class="dispatch-list" id="dispatch-chosen"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-dispatch')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveDispatch()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== CONFIRM MODAL ======== -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-body" style="text-align:center;padding:28px 24px">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-title" id="confirm-title">Xác nhận xóa</div>
+      <div class="confirm-text" id="confirm-text">Hành động này không thể hoàn tác.</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Hủy</button>
+        <button class="btn btn-danger" onclick="confirmOk()">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+// ===== Clock =====
+function mgrClock() {
+  const now = new Date();
+  const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+  const d = document.getElementById('mgr-date');
+  const dy = document.getElementById('mgr-day');
+  if (d) d.textContent = now.toLocaleDateString('vi-VN');
+  if (dy) dy.textContent = days[now.getDay()];
+}
+mgrClock(); setInterval(mgrClock, 60000);
+
+// ===== BRANCH DATA =====
+const branches = [
+  {id:'CN001',name:'Cửa hàng Hà Nội',addr:'123 Nguyễn Trãi, Thanh Xuân, HN',mgr:'Trần Minh Quân',phone:'024 1234 5678',open:'08:00',close:'22:00',status:'active'},
+  {id:'CN002',name:'Cửa hàng Đà Nẵng',addr:'456 Điện Biên Phủ, Hải Châu, ĐN',mgr:'Phạm Thị Lan',phone:'0236 234 5678',open:'08:00',close:'22:00',status:'active'},
+  {id:'CN003',name:'Cửa hàng HCM',addr:'789 Nguyễn Đình Chiểu, Q3, HCM',mgr:'Lê Hoàng Nam',phone:'028 345 6789',open:'08:00',close:'22:00',status:'active'},
+  {id:'CN004',name:'Cửa hàng Cần Thơ',addr:'12 Mậu Thân, Ninh Kiều, Cần Thơ',mgr:'Vũ Minh Tâm',phone:'0292 456 7890',open:'08:00',close:'22:00',status:'inactive'},
+];
+let branchPage = 0, editBranchIdx = -1;
+function renderBranches() {
+  document.getElementById('branch-body').innerHTML = branches.map((b,i) =>
+    `<tr>
+      <td>${i+1}</td><td><span class="fw-600">${b.id}</span></td>
+      <td>${b.name}</td><td style="max-width:200px;font-size:12px">${b.addr}</td>
+      <td>${b.mgr}</td>
+      <td>${b.status==='active'?'<span class="badge badge-green">Hoạt động</span>':'<span class="badge badge-red">Tạm ngưng</span>'}</td>
+      <td>
+        <button class="btn-icon" title="Sửa" onclick="editBranch(${i})">✏️</button>
+        <button class="btn-icon" title="Xóa" onclick="deleteBranch(${i})">🗑️</button>
+      </td>
+    </tr>`
+  ).join('');
+}
+function openBranchForm(idx=-1) {
+  editBranchIdx = idx;
+  document.getElementById('branch-form-title').textContent = idx < 0 ? 'Thêm chi nhánh' : 'Chỉnh sửa chi nhánh';
+  if (idx >= 0) {
+    const b = branches[idx];
+    document.getElementById('bf-name').value  = b.name;
+    document.getElementById('bf-addr').value  = b.addr;
+    document.getElementById('bf-phone').value = b.phone;
+    document.getElementById('bf-open').value  = b.open;
+    document.getElementById('bf-close').value = b.close;
+    document.getElementById('bf-status').value = b.status;
+  } else {
+    ['bf-name','bf-addr','bf-phone'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('bf-open').value='08:00'; document.getElementById('bf-close').value='22:00';
+  }
+  openSidePanel('panel-branch');
+}
+function editBranch(i) { openBranchForm(i); }
+function deleteBranch(i) {
+  showConfirm('Xác nhận xóa', `Bạn có chắc chắn muốn xóa chi nhánh "${branches[i].name}"? Hành động này không thể hoàn tác.`, () => {
+    branches.splice(i,1); renderBranches(); showToast('Đã xóa chi nhánh!');
+  });
+}
+function saveBranch() {
+  const name = document.getElementById('bf-name').value.trim();
+  if (!name) { showToast('Vui lòng nhập tên chi nhánh!','error'); return; }
+  if (editBranchIdx < 0) {
+    branches.push({id:`CN${String(branches.length+1).padStart(3,'0')}`,name,addr:document.getElementById('bf-addr').value,mgr:document.getElementById('bf-mgr').value,phone:document.getElementById('bf-phone').value,open:document.getElementById('bf-open').value,close:document.getElementById('bf-close').value,status:document.getElementById('bf-status').value});
+    showToast('Thêm chi nhánh thành công!');
+  } else {
+    const b = branches[editBranchIdx];
+    b.name=name; b.addr=document.getElementById('bf-addr').value; b.phone=document.getElementById('bf-phone').value;
+    b.open=document.getElementById('bf-open').value; b.close=document.getElementById('bf-close').value;
+    b.status=document.getElementById('bf-status').value;
+    showToast('Cập nhật chi nhánh thành công!');
+  }
+  closeSidePanel('panel-branch'); renderBranches();
+}
+renderBranches();
+
+// ===== ACCOUNTS DATA =====
+const accounts = [
+  {id:'NVF0001',name:'Nguyễn Văn A',email:'nva@hygge.vn',phone:'0901234567',type:'Full-time',branch:'Cửa hàng Hà Nội',status:'active'},
+  {id:'NVP0001',name:'Lê Thị B',email:'ltb@hygge.vn',phone:'0912345678',type:'Part-time',branch:'Cửa hàng Hà Nội',status:'active'},
+  {id:'NVF0002',name:'Trần Văn C',email:'tvc@hygge.vn',phone:'0923456789',type:'Full-time',branch:'Cửa hàng Đà Nẵng',status:'active'},
+  {id:'NVP0002',name:'Phạm Thị D',email:'ptd@hygge.vn',phone:'0934567890',type:'Part-time',branch:'Cửa hàng HCM',status:'locked'},
+  {id:'NVF0003',name:'Hoàng Minh E',email:'hme@hygge.vn',phone:'0945678901',type:'Full-time',branch:'Cửa hàng Hà Nội',status:'active'},
+];
+let editAccIdx = -1;
+function renderAccounts() {
+  document.getElementById('accounts-body').innerHTML = accounts.map((a,i) =>
+    `<tr>
+      <td>${i+1}</td><td><span class="fw-600 text-sm">${a.id}</span></td>
+      <td>${a.name}</td><td style="font-size:12px">${a.email}</td><td style="font-size:12px">${a.phone}</td>
+      <td><span class="badge ${a.type==='Full-time'?'badge-blue':'badge-amber'}">${a.type}</span></td>
+      <td>${a.status==='active'?'<span class="badge badge-green">Hoạt động</span>':'<span class="badge badge-red">Bị khóa</span>'}</td>
+      <td>
+        <button class="btn-icon" onclick="editAccount(${i})">✏️</button>
+        <button class="btn-icon" onclick="deleteAccount(${i})">🗑️</button>
+      </td>
+    </tr>`
+  ).join('');
+}
+function openAccountForm(idx=-1) {
+  editAccIdx = idx;
+  document.getElementById('acc-form-title').textContent = idx < 0 ? 'Thêm tài khoản' : 'Chỉnh sửa tài khoản';
+  if (idx >= 0) {
+    const a = accounts[idx];
+    document.getElementById('af-name').value = a.name;
+    document.getElementById('af-email').value = a.email;
+    document.getElementById('af-phone').value = a.phone;
+    document.getElementById('af-type').value = a.type === 'Full-time' ? 'full' : 'part';
+    document.getElementById('af-status').value = a.status;
+  } else {
+    ['af-name','af-email','af-phone','af-pw'].forEach(id => document.getElementById(id).value = '');
+  }
+  openSidePanel('panel-account');
+}
+function editAccount(i) { openAccountForm(i); }
+function deleteAccount(i) {
+  showConfirm('Xác nhận xóa', `Bạn có chắc chắn muốn xóa tài khoản "${accounts[i].name}"?`, () => {
+    accounts.splice(i,1); renderAccounts(); showToast('Đã xóa tài khoản!');
+  });
+}
+function saveAccount() {
+  const name = document.getElementById('af-name').value.trim();
+  if (!name) { showToast('Vui lòng nhập họ tên!','error'); return; }
+  if (editAccIdx < 0) {
+    const type = document.getElementById('af-type').value === 'full' ? 'Full-time' : 'Part-time';
+    const pfx  = type === 'Full-time' ? 'NVF' : 'NVP';
+    const cnt  = accounts.filter(a => a.type === type).length + 1;
+    accounts.push({id:`${pfx}${String(cnt).padStart(4,'0')}`,name,email:document.getElementById('af-email').value,phone:document.getElementById('af-phone').value,type,branch:document.getElementById('af-branch').value,status:document.getElementById('af-status').value});
+    showToast('Thêm tài khoản thành công!');
+  } else {
+    const a = accounts[editAccIdx];
+    a.name=name; a.email=document.getElementById('af-email').value;
+    a.phone=document.getElementById('af-phone').value;
+    a.status=document.getElementById('af-status').value;
+    showToast('Cập nhật tài khoản thành công!');
+  }
+  closeSidePanel('panel-account'); renderAccounts();
+}
+renderAccounts();
+
+// ===== SHIFTS DATA =====
+const shifts = [
+  {id:'C01',name:'Ca sáng',start:'08:00',end:'12:00',min:3,nv:12},
+  {id:'C02',name:'Ca chiều',start:'13:00',end:'17:00',min:3,nv:8},
+  {id:'C03',name:'Ca tối',start:'18:00',end:'22:00',min:2,nv:6},
+  {id:'C04',name:'Ca cả ngày',start:'08:00',end:'17:00',min:2,nv:4},
+];
+let editShiftIdx = -1;
+function renderShifts() {
+  document.getElementById('shifts-body').innerHTML = shifts.map((s,i) =>
+    `<tr>
+      <td>${i+1}</td><td><span class="fw-600">${s.id}</span></td>
+      <td>${s.name}</td><td>${s.start}</td><td>${s.end}</td>
+      <td>${s.nv} NV</td>
+      <td>
+        <button class="btn-icon" onclick="editShift(${i})">✏️</button>
+        <button class="btn-icon" onclick="deleteShift(${i})">🗑️</button>
+      </td>
+    </tr>`
+  ).join('');
+}
+function openShiftForm(idx=-1) {
+  editShiftIdx = idx;
+  document.getElementById('shift-form-title').textContent = idx < 0 ? 'Thêm ca làm' : 'Chỉnh sửa ca làm';
+  if (idx >= 0) {
+    const s = shifts[idx];
+    document.getElementById('sf-name').value  = s.name;
+    document.getElementById('sf-start').value = s.start;
+    document.getElementById('sf-end').value   = s.end;
+    document.getElementById('sf-min').value   = s.min;
+  } else {
+    ['sf-name','sf-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('sf-start').value=''; document.getElementById('sf-end').value=''; document.getElementById('sf-min').value='2';
+  }
+  openSidePanel('panel-shift');
+}
+function editShift(i) { openShiftForm(i); }
+function deleteShift(i) {
+  showConfirm('Xác nhận xóa', `Bạn có chắc chắn muốn xóa ca làm "${shifts[i].name}"?`, () => {
+    shifts.splice(i,1); renderShifts(); showToast('Đã xóa ca làm!');
+  });
+}
+function saveShift() {
+  const name = document.getElementById('sf-name').value.trim();
+  if (!name) { showToast('Vui lòng nhập tên ca!','error'); return; }
+  if (editShiftIdx < 0) {
+    shifts.push({id:`C${String(shifts.length+1).padStart(2,'0')}`,name,start:document.getElementById('sf-start').value,end:document.getElementById('sf-end').value,min:document.getElementById('sf-min').value,nv:0});
+    showToast('Thêm ca làm thành công!');
+  } else {
+    const s = shifts[editShiftIdx];
+    s.name=name; s.start=document.getElementById('sf-start').value; s.end=document.getElementById('sf-end').value; s.min=document.getElementById('sf-min').value;
+    showToast('Cập nhật ca làm thành công!');
+  }
+  closeSidePanel('panel-shift'); renderShifts();
+}
+renderShifts();
+
+// ===== SCHEDULE / ATTENDANCE =====
+const schedData = [
+  {nv:'Nguyễn Văn A',branch:'Cửa hàng Hà Nội',shift:'Ca sáng',ci:'07:58',co:'12:02',total:'4h 4p',status:'Hoàn thành'},
+  {nv:'Lê Thị B',branch:'Cửa hàng Hà Nội',shift:'Ca chiều',ci:'13:00',co:'17:00',total:'4h',status:'Hoàn thành'},
+  {nv:'Trần Văn C',branch:'Cửa hàng Đà Nẵng',shift:'Ca tối',ci:'18:02',co:'22:00',total:'3h 58p',status:'Về sớm'},
+  {nv:'Phạm Thị D',branch:'Cửa hàng HCM',shift:'Ca sáng',ci:'08:01',co:'12:05',total:'4h 4p',status:'Muộn giờ'},
+];
+function statusBadge(s) {
+  const map = {Hoàn:'badge-green','Về':'badge-amber','Muộn':'badge-red','Vắng':'badge-red'};
+  const cls = Object.keys(map).find(k => s.startsWith(k));
+  return `<span class="badge ${map[cls]||'badge-gray'}">${s}</span>`;
+}
+function renderSched() {
+  document.getElementById('sched-body').innerHTML = schedData.map((r,i) =>
+    `<tr>
+      <td>${i+1}</td><td>${r.nv}</td><td style="font-size:12px">${r.branch}</td>
+      <td>${r.shift}</td><td>${r.ci}</td><td>${r.co}</td><td>${r.total}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><button class="btn-icon" onclick="openModal('modal-edit-att')">✏️</button></td>
+    </tr>`
+  ).join('');
+}
+renderSched();
+
+// Branch select list in schedule
+function renderBranchSelectList() {
+  const el = document.getElementById('branch-select-list');
+  if (!el) return;
+  el.innerHTML = branches.map((b,i) =>
+    `<div style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:4px;${i===0?'background:var(--accent-light);':''}font-size:13px;display:flex;align-items:center;gap:8px" onclick="selectSchedBranch(this)">
+      <span class="dot ${b.status==='active'?'dot-green':'dot-red'}"></span>
+      <span>${b.name}</span>
+    </div>`
+  ).join('');
+}
+function selectSchedBranch(el) {
+  document.querySelectorAll('#branch-select-list > div').forEach(d => d.style.background='');
+  el.style.background = 'var(--accent-light)';
+}
+renderBranchSelectList();
+
+// Week grid for schedule
+const SHIFTS_VN = ['Ca sáng\n08:00-12:00','Ca chiều\n13:00-17:00','Ca tối\n18:00-22:00'];
+const SHIFT_DATA = [
+  [10,9,8,10,9,6,4],[8,7,8,7,6,4,3],[6,6,5,7,6,5,2]
+];
+let schedWeekOffset = 0;
+function changeSchedWeek(d) {
+  schedWeekOffset += d;
+  renderSchedWeekGrid();
+}
+function renderSchedWeekGrid() {
+  const dates = getWeekDates(schedWeekOffset);
+  const wn = getWeekNum(dates[0]);
+  document.getElementById('sched-week-label').textContent = `Tuần ${wn} (${fmtDate(dates[0])} – ${fmtDate(dates[6])})`;
+  let html = '<thead><tr><th style="text-align:left">Ca làm</th>';
+  DAYS_VN.forEach((d,i) => { html += `<th>${d}<br><span style="font-size:10px;font-weight:400">${fmtDate(dates[i])}</span></th>`; });
+  html += '</tr></thead><tbody>';
+  SHIFTS_VN.forEach((sh,si) => {
+    const [name,time] = sh.split('\n');
+    html += `<tr><td class="wg-shift-label">${name}<br><span style="font-size:10px;font-weight:400;color:var(--ink-muted)">${time}</span></td>`;
+    DAYS_VN.forEach((_,di) => {
+      const cnt = SHIFT_DATA[si][di];
+      html += `<td class="wg-count-cell" onclick="openDispatch('${name}','${fmtDate(dates[di])}',${cnt})">
+        <div class="wg-count">${cnt}</div>
+        <div class="wg-count-label">NV</div>
+      </td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('sched-week-grid').innerHTML = html;
+}
+function getWeekNum(d) {
+  const onejan = new Date(d.getFullYear(),0,1);
+  return Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+}
+renderSchedWeekGrid();
+
+// Dispatch modal
+const allNV = ['Nguyễn Văn A','Lê Thị B','Trần Văn C','Phạm Thị D','Hoàng Minh E','Vũ Thị F','Đặng Văn G','Bùi Thị H','Phan Văn I','Lý Thị J'];
+const allCodes = ['NVF0001','NVP0001','NVF0002','NVP0002','NVF0003','NVP0003','NVF0004','NVP0004','NVF0005','NVP0005'];
+let chosenNV = [];
+
+function openDispatch(shift, date, count) {
+  document.getElementById('dispatch-title').textContent = `${shift} ${date}`;
+  document.getElementById('dispatch-count').textContent = `${count}/10`;
+  chosenNV = allNV.slice(0, count);
+  renderDispatchLists();
+  openModal('modal-dispatch');
+}
+function renderDispatchLists() {
+  const avail = allNV.filter(n => !chosenNV.includes(n));
+  document.getElementById('dispatch-selected').innerHTML = avail.map((n,i) =>
+    `<div class="dispatch-item">
+      <div><div class="d-name">${n}</div><div class="d-code">${allCodes[allNV.indexOf(n)]}</div></div>
+      <button class="btn btn-success btn-sm" onclick="addToChosen('${n}')">＋</button>
+    </div>`
+  ).join('') || '<div style="padding:16px;text-align:center;font-size:12px;color:var(--ink-muted)">Không còn nhân viên</div>';
+  document.getElementById('dispatch-chosen').innerHTML = chosenNV.map(n =>
+    `<div class="dispatch-item">
+      <div><div class="d-name">${n}</div><div class="d-code">${allCodes[allNV.indexOf(n)]}</div></div>
+      <button class="btn btn-danger btn-sm" onclick="removeFromChosen('${n}')">✕</button>
+    </div>`
+  ).join('') || '<div style="padding:16px;text-align:center;font-size:12px;color:var(--ink-muted)">Chưa có nhân viên</div>';
+  document.getElementById('dispatch-chosen-count').textContent = chosenNV.length;
+}
+function addToChosen(n) {
+  if (chosenNV.includes(n)) { showToast('Nhân viên đã có trong ca!','error'); return; }
+  chosenNV.push(n); renderDispatchLists();
+}
+function removeFromChosen(n) {
+  showConfirm('Xác nhận xóa', `Bỏ nhân viên "${n}" khỏi ca này?`, () => {
+    chosenNV = chosenNV.filter(x => x !== n); renderDispatchLists();
+  });
+}
+function saveDispatch() {
+  closeModal('modal-dispatch');
+  showToast('Điều phối nhân sự thành công!');
+}
+</script>
+</body>
+</html>
