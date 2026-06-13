@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Quản lý tài khoản</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/taikhoan.css" />
+</head>
+<body>
+
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+
+        <!-- ── Stat cards ── -->
+        <div class="stat-grid">
+          <div class="stat-card stat-card--total">
+            <div class="stat-icon stat-icon--blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>
+            </div>
+            <div class="stat-label">Tổng tài khoản</div>
+            <div class="stat-value" id="s-total">—</div>
+          </div>
+          <div class="stat-card stat-card--fulltime">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v4M10 14h4"/></svg>
+            </div>
+            <div class="stat-label">Full-time</div>
+            <div class="stat-value" id="s-fulltime">—</div>
+          </div>
+          <div class="stat-card stat-card--parttime">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </div>
+            <div class="stat-label">Part-time</div>
+            <div class="stat-value" id="s-parttime">—</div>
+          </div>
+          <div class="stat-card stat-card--locked">
+            <div class="stat-icon stat-icon--red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="stat-label">Bị khóa</div>
+            <div class="stat-value" id="s-locked">—</div>
+          </div>
+        </div>
+
+        <!-- ── Toolbar ── -->
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <div class="search-wrap">
+              <span class="search-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+              </span>
+              <input id="search-input" class="form-control"
+                style="padding-left:32px; width:240px;"
+                placeholder="Tìm tên hoặc mã nhân viên…"
+                oninput="applyFilters()" />
+            </div>
+            <select id="filter-loai" class="form-control" style="width:140px;" onchange="applyFilters()">
+              <option value="">Loại: Tất cả</option>
+              <option value="fulltime">Full-time</option>
+              <option value="parttime">Part-time</option>
+            </select>
+            <select id="filter-cn" class="form-control" style="width:160px;" onchange="applyFilters()">
+              <option value="">Chi nhánh: Tất cả</option>
+            </select>
+          </div>
+          <div class="page-bar-right">
+            <button class="btn btn-primary" onclick="openAddPanel()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+              Thêm tài khoản
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Tabs ── -->
+        <div class="tabs" id="tabs">
+          <button class="tab-btn active" data-tab="all"      onclick="switchTab('all',this)">Tất cả <span class="tab-count" id="tc-all"></span></button>
+          <button class="tab-btn"        data-tab="fulltime" onclick="switchTab('fulltime',this)">Full-time <span class="tab-count" id="tc-fulltime"></span></button>
+          <button class="tab-btn"        data-tab="parttime" onclick="switchTab('parttime',this)">Part-time <span class="tab-count" id="tc-parttime"></span></button>
+          <button class="tab-btn"        data-tab="locked"   onclick="switchTab('locked',this)">Bị khóa <span class="tab-count" id="tc-locked"></span></button>
+        </div>
+
+        <!-- ── Table ── -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div class="table-wrap">
+            <table id="acc-table">
+              <thead>
+                <tr>
+                  <th style="width:36%">Nhân viên</th>
+                  <th>Mã NV</th>
+                  <th>Chi nhánh</th>
+                  <th>Loại</th>
+                  <th>Trạng thái</th>
+                  <th style="text-align:right; padding-right:20px;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="acc-tbody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="empty-state" style="display:none;">
+            <div class="empty-icon">👥</div>
+            <p>Không tìm thấy tài khoản nào.</p>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ══ SIDE PANEL: Thêm / Sửa ══ -->
+  <div class="side-overlay" id="side-overlay" onclick="closeSidePanel('acc-panel')"></div>
+  <div class="side-panel" id="acc-panel">
+    <div class="side-panel-header">
+      <span class="side-panel-title" id="panel-title">Thêm tài khoản</span>
+      <button class="btn-icon" onclick="closeSidePanel('acc-panel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="side-panel-body">
+      <input type="hidden" id="f-id" />
+
+      <div class="form-group">
+        <label class="form-label">Họ tên <span style="color:var(--red)">*</span></label>
+        <input id="f-hoten" class="form-control" placeholder="Nguyễn Văn A" />
+        <div class="form-error" id="e-hoten"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Số điện thoại <span style="color:var(--red)">*</span></label>
+          <input id="f-sdt" class="form-control" placeholder="0xxxxxxxxx" maxlength="10" />
+          <div class="form-error" id="e-sdt"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="f-email" class="form-control" type="email" placeholder="example@gmail.com" />
+          <div class="form-error" id="e-email"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Loại nhân viên <span style="color:var(--red)">*</span></label>
+          <select id="f-loai" class="form-control">
+            <option value="fulltime">Full-time</option>
+            <option value="parttime">Part-time</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Chi nhánh <span style="color:var(--red)">*</span></label>
+          <select id="f-chinhanh" class="form-control">
+            <option value="">-- Chọn chi nhánh --</option>
+          </select>
+          <div class="form-error" id="e-chinhanh"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Chức vụ <span style="color:var(--red)">*</span></label>
+        <select id="f-chucvu" class="form-control">
+          <option value="Nhân viên bán hàng">Nhân viên bán hàng</option>
+          <option value="Thu ngân">Thu ngân</option>
+          <option value="Trưởng ca">Trưởng ca</option>
+          <option value="Quản lý">Quản lý</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="pw-group">
+        <label class="form-label">Mật khẩu <span style="color:var(--red)">*</span></label>
+        <div style="position:relative;">
+          <input id="f-matkhau" class="form-control" type="password"
+                 placeholder="Tối thiểu 8 ký tự, có chữ và số"
+                 style="padding-right:36px;" />
+          <button type="button" class="btn-icon" id="pw-toggle"
+                  style="position:absolute;right:4px;top:50%;transform:translateY(-50%);"
+                  onclick="togglePw()">
+            <svg id="pw-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="form-error" id="e-matkhau"></div>
+      </div>
+
+      <div class="form-group" id="pw-hint" style="display:none;">
+        <div class="alert alert-info" style="margin:0; font-size:12px;">
+          Để trống nếu không muốn đổi mật khẩu.
+        </div>
+      </div>
+
+    </div>
+    <div class="side-panel-footer">
+      <button class="btn btn-outline" onclick="closeSidePanel('acc-panel')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveAccount()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Lưu
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ CONFIRM MODAL ══ -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal" style="width:400px;">
+      <div class="modal-body" style="text-align:center; padding:28px 24px;">
+        <div class="confirm-icon" id="confirm-icon">⚠️</div>
+        <div class="confirm-title" id="confirm-title"></div>
+        <div class="confirm-text"  id="confirm-text"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:center; gap:12px;">
+        <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Hủy</button>
+        <button class="btn btn-danger"  id="confirm-ok-btn" onclick="confirmOk()">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/taikhoan.js"></script>
+  <script>
+    initLayout(['quanly']).then(user => {
+      if (!user) return;
+      initTaiKhoan();
+    });
+  </script>
+</body>
+</html>

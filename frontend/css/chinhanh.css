@@ -1,0 +1,180 @@
+/* =====================================================
+   chinhanh.css — styles riêng cho trang Quản lý chi nhánh
+   Import AFTER main.css. Không override variables gốc.
+===================================================== */
+
+/* ── Stat card: icon màu theo loại ── */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card:nth-child(1)::before { background: var(--blue); }
+.stat-card:nth-child(2)::before { background: var(--accent); }
+.stat-card:nth-child(3)::before { background: var(--amber); }
+.stat-card:nth-child(4)::before { background: #8B5CF6; }
+
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.stat-icon--blue   { background: var(--blue-bg);   color: var(--blue); }
+.stat-icon--green  { background: var(--accent-light); color: var(--accent); }
+.stat-icon--amber  { background: var(--amber-bg);  color: var(--amber); }
+.stat-icon--purple { background: #EDE9FE;           color: #7C3AED; }
+
+/* ── Branch grid ── */
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* ── Branch card ── */
+.branch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow .15s, border-color .15s;
+}
+.branch-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+
+.branch-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.branch-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.branch-name-wrap { flex: 1; min-width: 0; }
+.branch-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branch-code {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.branch-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Divider ── */
+.branch-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Meta rows ── */
+.branch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.branch-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.branch-meta-row svg {
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.branch-meta-row span { line-height: 1.4; }
+
+/* ── Footer stats ── */
+.branch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+.branch-stats {
+  display: flex;
+  gap: 16px;
+}
+.branch-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.branch-stat-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.branch-stat-lbl {
+  font-size: 10px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Status badge dot ── */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.active  { color: var(--green); }
+.status-dot.active::before  { background: var(--green); }
+.status-dot.inactive { color: var(--ink-muted); }
+.status-dot.inactive::before { background: var(--ink-muted); }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .branch-grid { grid-template-columns: 1fr; }
+}
