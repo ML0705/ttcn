@@ -76,9 +76,15 @@ GO
 -- 4. TÀI KHOẢN
 -- ============================================================
 INSERT INTO dbo.Tai_khoan (manhanvien, tendangnhap, matkhau)
-SELECT manhanvien, sodienthoai, '$2b$10$placeholderHashReplaceMe'
-FROM dbo.Nhan_vien;
-GO
+SELECT nv.manhanvien, nv.sodienthoai,
+  CASE nv.sodienthoai
+    WHEN '0901111111' THEN '$2b$10$SOmva0kj5nwtknuU/gksa0qUPUUALVohJBaEhFd6Wrws3mDzT9LC.'
+    WHEN '0902222222' THEN '$2b$10$N0k0GxVUGfa6KZv.3uO8X0iU/BB4IzrKuuVUbFdrqBS4ZpX0qFhkO'
+    WHEN '0903333333' THEN '$2b$10$qNIdsD8tnvEK6mBjIQ2tSeEoh46zHFP62ePCnKVg9tFTh7ncjkOV.'
+    WHEN '0904444444' THEN '$2b$10$GluF2Xs5zqw47U3XQhKPneYXu/GB18z2OorGRQ1vDGfHwzmuiplny'
+    WHEN '0905555555' THEN '$2b$10$9sNkOV1sdbDR20.cdeS1jej/KN3Fl0WMzPqD4cvrszoYoU/KX7uV6'
+  END
+FROM dbo.Nhan_vien nv;
 
 -- ============================================================
 -- 5. CA LÀM — INSERT từng dòng → C01, C02, C03
