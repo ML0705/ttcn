@@ -40,7 +40,7 @@ let mockAccounts = [
 /* ── State ── */
 let _activeTab  = 'all';
 let _editingId  = null;
-let _confirmCb  = null;  // override shared.js confirmOk
+let _tkCb  = null;  
 
 /* ══════════════════════════════════════════
    INIT
@@ -322,7 +322,7 @@ function askToggleLock(id) {
   document.getElementById('confirm-ok-btn').className   =
     isLocked ? 'btn btn-success' : 'btn btn-danger';
 
-  _confirmCb = () => toggleLock(id);
+  _tkCb = () => toggleLock(id);
   openModal('confirm-modal');
 }
 
@@ -336,8 +336,8 @@ function toggleLock(id) {
   /* TODO (backend): fetch PATCH /api/taikhoan/:id/lock, body = { trangthaikhoa } */
 }
 
-/* Override confirmOk của shared.js để dùng _confirmCb cục bộ */
+/* Override confirmOk của shared.js để dùng _tkCb cục bộ */
 function confirmOk() {
   closeModal('confirm-modal');
-  if (_confirmCb) { _confirmCb(); _confirmCb = null; }
+  if (_tkCb) { _tkCb(); _tkCb = null; }
 }
