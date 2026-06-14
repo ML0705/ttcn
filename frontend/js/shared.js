@@ -42,7 +42,7 @@ const MENU_CONFIG = [
     items: [
       { href: '/manager/chinhanh.html', label: 'Quản lý chi nhánh', icon: '🏬', roles: ['quanly'] },
       { href: '/manager/taikhoan.html', label: 'Quản lý tài khoản', icon: '👥', roles: ['quanly'] },
-      { href: '/manager/calm.html',     label: 'Quản lý ca làm',    icon: '🗓️', roles: ['quanly'] },
+      { href: '/manager/calam.html',     label: 'Quản lý ca làm',    icon: '🗓️', roles: ['quanly'] },
     ],
   },
 ];

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Điều phối lịch làm</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/lichlam.css" />
+</head>
+<body>
+
+<div class="mobile-overlay" onclick="closeMobileSidebar()"></div>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-root"></aside>
+
+  <div class="main">
+    <header class="header" id="header-root"></header>
+
+    <main class="content">
+
+      <!-- ── Toolbar tuần ── -->
+      <div class="week-toolbar">
+        <div class="week-nav">
+          <button class="week-nav-btn" id="btn-prev-week" title="Tuần trước">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          <span class="week-label" id="week-label">—</span>
+          <button class="week-nav-btn" id="btn-next-week" title="Tuần sau">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+
+        <span class="status-pill draft" id="status-pill">—</span>
+
+        <div class="toolbar-spacer"></div>
+
+        <button class="btn btn-primary" id="btn-chot-lich">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Chốt lịch
+        </button>
+      </div>
+
+      <!-- ── Bảng lịch tuần ── -->
+      <div class="schedule-card">
+        <div class="schedule-table-wrap">
+          <table class="schedule-table">
+            <thead>
+              <tr id="sched-thead"></tr>
+            </thead>
+            <tbody id="sched-tbody">
+              <tr>
+                <td class="shift-label-cell"><div class="skeleton" style="height:14px;width:70px;"></div></td>
+                <td class="sched-cell" colspan="7"><div class="skeleton" style="height:36px;"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Chú giải -->
+        <div class="legend-row">
+            <div class="legend-item"><span class="legend-dot filled"></span> Đã có người đăng ký</div>
+            <div class="legend-item"><span class="legend-dot empty"></span> Chưa có ai đăng ký</div>
+        </div>
+      </div>
+
+      <!-- ── Hướng dẫn ── -->
+      <div class="alert alert-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;margin-top:1px">
+          <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
+        </svg>
+        <span>Bấm vào từng ô để xem danh sách nhân viên đã đăng ký và điều phối (thêm/xóa). Sau khi sắp xếp xong, nhấn <strong>Chốt lịch</strong> để xác nhận chính thức và gửi thông báo tới nhân viên.</span>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     MODAL ĐIỀU PHỐI NHÂN SỰ
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-dieuphoi">
+  <div class="modal">
+
+    <div class="modal-header">
+      <span class="modal-title">Điều phối nhân sự</span>
+      <button class="modal-close" onclick="closeModal('modal-dieuphoi')">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Thông tin ca -->
+      <div class="dp-modal-info">
+        <div class="info-item">
+          <span class="info-label">Ngày</span>
+          <span class="info-val" id="dp-ngay">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Ca làm</span>
+          <span class="info-val" id="dp-ca">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Thời gian</span>
+          <span class="info-val" id="dp-gio">—</span>
+        </div>
+      </div>
+
+      <!-- Cảnh báo thiếu người -->
+      <div class="alert alert-warning" id="dp-warn" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;margin-top:1px">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+
+      <!-- Danh sách NV đã đăng ký -->
+      <div class="dp-section-title">
+        <span>Nhân viên đã đăng ký</span>
+        <span class="dp-count-badge" id="dp-count-badge">0 người</span>
+      </div>
+      <div class="dp-nv-list" id="dp-nv-list"></div>
+
+      <!-- Thêm nhân viên -->
+      <div class="dp-section-title">Thêm nhân viên</div>
+      <div class="dp-add-row">
+        <select id="dp-add-select"></select>
+        <button class="btn btn-primary" id="btn-dp-add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Thêm
+        </button>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-dieuphoi')">Đóng</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     CONFIRM POPUP (dùng chung)
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-body" style="text-align:center; padding:32px 24px 20px;">
+      <div class="confirm-icon" id="confirm-icon">⚠️</div>
+      <div class="confirm-title" id="confirm-title"></div>
+      <div class="confirm-text"  id="confirm-text"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:center; gap:12px;">
+      <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Hủy</button>
+      <button class="btn btn-primary" onclick="confirmOk()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="/js/shared.js"></script>
+<script src="/js/lichlam.js"></script>
+
+</body>
+</html>
