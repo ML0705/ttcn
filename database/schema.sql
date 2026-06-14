@@ -7,6 +7,11 @@
 --   2. Trigger Chi_nhanh & Ca_lam: dùng cursor để hỗ trợ batch INSERT
 --   3. Thêm SP_TaoNhanVien: stored procedure tạo NV + TK trong 1 transaction
 --   4. Thêm trigger trg_NhanVien_DoiSDT: đồng bộ tendangnhap khi SĐT thay đổi
+-- Thay đổi so với v3 cũ:
+--   5. FK Tai_khoan, Dang_ky_lich_lam, Cham_cong → ON DELETE CASCADE
+--   6. Thêm SP_CapNhatNhanVien: sửa thông tin NV + TK trong 1 transaction
+--   7. Thêm SP_XoaNhanVien: xóa NV + toàn bộ dữ liệu liên quan qua cascade
+--   8. Đổi nhãn "bộ phận" → "chức vụ" trong comment cho đúng với form UI
 -- ============================================================
 
 USE master;
@@ -46,7 +51,10 @@ IF OBJECT_ID('dbo.trg_Ca_lam_SinhMa',      'TR') IS NOT NULL DROP TRIGGER dbo.tr
 IF OBJECT_ID('dbo.trg_Lich_lam_SinhMa',    'TR') IS NOT NULL DROP TRIGGER dbo.trg_Lich_lam_SinhMa;
 
 -- Dọn stored procedure
-IF OBJECT_ID('dbo.SP_TaoNhanVien', 'P') IS NOT NULL DROP PROCEDURE dbo.SP_TaoNhanVien;
+IF OBJECT_ID('dbo.SP_TaoNhanVien',      'P') IS NOT NULL DROP PROCEDURE dbo.SP_TaoNhanVien;
+IF OBJECT_ID('dbo.SP_CapNhatNhanVien',  'P') IS NOT NULL DROP PROCEDURE dbo.SP_CapNhatNhanVien;
+IF OBJECT_ID('dbo.SP_XoaNhanVien',      'P') IS NOT NULL DROP PROCEDURE dbo.SP_XoaNhanVien;
+IF OBJECT_ID('dbo.SP_DoiMatKhau',       'P') IS NOT NULL DROP PROCEDURE dbo.SP_DoiMatKhau;
 GO
 
 -- ============================================================
@@ -70,7 +78,6 @@ GO
 CREATE TABLE dbo._Seq_Chi_nhanh (id INT IDENTITY(1,1) PRIMARY KEY);
 GO
 
--- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 CREATE TRIGGER dbo.trg_Chi_nhanh_SinhMa
 ON dbo.Chi_nhanh
 INSTEAD OF INSERT
@@ -128,6 +135,8 @@ GO
 
 -- ============================================================
 -- 3. CHỨC VỤ
+-- Hiển thị trong form UI dưới nhãn "Chức vụ" (combobox)
+-- Ví dụ: Quản lý, Nhân viên bán hàng, Thu ngân, ...
 -- ============================================================
 CREATE TABLE dbo.Chuc_vu (
     machucvu    CHAR(10)        NOT NULL,
@@ -141,7 +150,6 @@ GO
 -- ============================================================
 -- 4. NHÂN VIÊN
 -- Mã tự sinh: NVP0001 (Parttime) | NVF0001 (Fulltime)
--- Caller truyền thêm matkhau (plain-text) → trigger hash và tạo Tai_khoan
 -- ============================================================
 CREATE TABLE dbo.Nhan_vien (
     manhanvien      VARCHAR(10)     NOT NULL,
@@ -151,10 +159,6 @@ CREATE TABLE dbo.Nhan_vien (
     hoten           NVARCHAR(50)    NOT NULL,
     email           VARCHAR(50)     NULL,
     sodienthoai     CHAR(10)        NOT NULL,
-
-    -- Cột tạm để nhận mật khẩu từ caller, KHÔNG lưu lại sau trigger
-    -- Trigger đọc rồi INSERT vào Tai_khoan, sau đó cột này bị bỏ qua
-    -- Dùng computed column giả hoặc truyền qua SP (xem SP_TaoNhanVien bên dưới)
 
     CONSTRAINT PK_Nhan_vien     PRIMARY KEY (manhanvien),
     CONSTRAINT UQ_NV_Email      UNIQUE (email),
@@ -174,28 +178,27 @@ GO
 
 -- ============================================================
 -- 5. TÀI KHOẢN
--- tendangnhap = sodienthoai (UNIQUE đã đảm bảo không trùng)
+-- tendangnhap = sodienthoai
+-- ON DELETE CASCADE: khi xóa Nhan_vien → tự xóa Tai_khoan
 -- ============================================================
 CREATE TABLE dbo.Tai_khoan (
     manhanvien          VARCHAR(10)     NOT NULL,
     tendangnhap         CHAR(10)        NOT NULL,   -- = sodienthoai
-    matkhau             VARCHAR(255)    NOT NULL,   -- lưu dạng hash SHA2_256
+    matkhau             VARCHAR(255)    NOT NULL,   -- bcrypt hash từ backend
     solansaidangnhap    INT             NOT NULL DEFAULT 0,
     trangthaikhoa       BIT             NOT NULL DEFAULT 0,
 
     CONSTRAINT PK_Tai_khoan     PRIMARY KEY (manhanvien),
     CONSTRAINT UQ_TK_TenDN      UNIQUE (tendangnhap),
     CONSTRAINT FK_TK_Nhan_vien  FOREIGN KEY (manhanvien)
-                                    REFERENCES dbo.Nhan_vien (manhanvien),
+                                    REFERENCES dbo.Nhan_vien (manhanvien)
+                                    ON DELETE CASCADE,              -- [MỚI] cascade
     CONSTRAINT CK_TK_SoLanSai   CHECK (solansaidangnhap >= 0)
 );
 GO
 
 -- ============================================================
--- TRIGGER: Nhân viên — sinh mã + tạo Tai_khoan
--- Lưu ý: vì mật khẩu không thể truyền qua inserted table của Nhan_vien,
---        nên dùng SP_TaoNhanVien (bên dưới) thay vì INSERT trực tiếp.
---        Trigger này giữ để xử lý trường hợp INSERT trực tiếp (mật khẩu mặc định = hash SĐT).
+-- TRIGGER: Nhân viên — sinh mã + tạo Tai_khoan tạm
 -- ============================================================
 CREATE TRIGGER dbo.trg_Nhan_vien_SinhMa
 ON dbo.Nhan_vien
@@ -225,7 +228,6 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        -- Sinh mã theo loại nhân viên
         IF @maloainhanvien = 'LNV02'    -- Parttime
         BEGIN
             INSERT INTO dbo._Seq_Nhan_vien_P DEFAULT VALUES;
@@ -241,20 +243,14 @@ BEGIN
 
         SET @newMa = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
 
-        -- INSERT nhân viên
         INSERT INTO dbo.Nhan_vien
             (manhanvien, machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
         VALUES
             (@newMa, @machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sdt);
 
-        -- Tự tạo tài khoản, mật khẩu mặc định = hash(SĐT)
-        -- Khuyến nghị: dùng SP_TaoNhanVien để truyền mật khẩu tùy chỉnh
+        -- Tạo dòng Tai_khoan tạm, SP_TaoNhanVien sẽ UPDATE matkhau thực
         INSERT INTO dbo.Tai_khoan (manhanvien, tendangnhap, matkhau)
-        VALUES (
-            @newMa,
-            @sdt,
-            CONVERT(VARCHAR(255), HASHBYTES('SHA2_256', @sdt), 2)
-        );
+        VALUES (@newMa, @sdt, '');
 
         FETCH NEXT FROM @cur INTO @machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sdt;
     END
@@ -281,14 +277,13 @@ BEGIN
     FROM dbo.Tai_khoan tk
     INNER JOIN inserted i ON i.manhanvien = tk.manhanvien
     INNER JOIN deleted  d ON d.manhanvien = tk.manhanvien
-    WHERE d.sodienthoai <> i.sodienthoai;   -- chỉ cập nhật khi thực sự đổi
+    WHERE d.sodienthoai <> i.sodienthoai;
 END;
 GO
 
 -- ============================================================
 -- 6. CA LÀM
 -- Mã tự sinh: C01, C02, ...
--- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 -- ============================================================
 CREATE TABLE dbo.Ca_lam (
     maca    CHAR(10)        NOT NULL,
@@ -367,8 +362,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Caller chỉ cần truyền: maca + ngay
-    -- Trigger tự lấy giờ snapshot từ Ca_lam và sinh malichlam
     INSERT INTO dbo.Lich_lam (malichlam, maca, ngay, thoigianbatdau, thoigianketthuc)
     SELECT
         RIGHT('00' + CAST(DAY(i.ngay)   AS VARCHAR(2)), 2) +
@@ -388,6 +381,7 @@ GO
 
 -- ============================================================
 -- 8. ĐĂNG KÝ LỊCH LÀM
+-- ON DELETE CASCADE: xóa Nhan_vien → tự xóa đăng ký lịch
 -- ============================================================
 CREATE TABLE dbo.Dang_ky_lich_lam (
     manhanvien  VARCHAR(10)     NOT NULL,
@@ -395,7 +389,8 @@ CREATE TABLE dbo.Dang_ky_lich_lam (
 
     CONSTRAINT PK_DKLL              PRIMARY KEY (manhanvien, malichlam),
     CONSTRAINT FK_DKLL_Nhan_vien    FOREIGN KEY (manhanvien)
-                                        REFERENCES dbo.Nhan_vien (manhanvien),
+                                        REFERENCES dbo.Nhan_vien (manhanvien)
+                                        ON DELETE CASCADE,          -- [MỚI] cascade
     CONSTRAINT FK_DKLL_Lich_lam     FOREIGN KEY (malichlam)
                                         REFERENCES dbo.Lich_lam (malichlam)
 );
@@ -403,6 +398,7 @@ GO
 
 -- ============================================================
 -- 9. CHẤM CÔNG
+-- ON DELETE CASCADE: xóa Nhan_vien → tự xóa chấm công
 -- ============================================================
 CREATE TABLE dbo.Cham_cong (
     manhanvien          VARCHAR(10)     NOT NULL,
@@ -414,7 +410,8 @@ CREATE TABLE dbo.Cham_cong (
 
     CONSTRAINT PK_Cham_cong         PRIMARY KEY (manhanvien, malichlam),
     CONSTRAINT FK_CC_Nhan_vien      FOREIGN KEY (manhanvien)
-                                        REFERENCES dbo.Nhan_vien (manhanvien),
+                                        REFERENCES dbo.Nhan_vien (manhanvien)
+                                        ON DELETE CASCADE,          -- [MỚI] cascade
     CONSTRAINT FK_CC_Lich_lam       FOREIGN KEY (malichlam)
                                         REFERENCES dbo.Lich_lam (malichlam),
     CONSTRAINT CK_CC_TrangThaiIn    CHECK (trangthaicheckin  IN (0, 1)),
@@ -424,20 +421,19 @@ CREATE TABLE dbo.Cham_cong (
 GO
 
 -- ============================================================
--- STORED PROCEDURE: Tạo nhân viên + tài khoản trong 1 transaction
--- Đây là cách được khuyến nghị từ form "Thêm tài khoản"
--- Caller truyền đủ thông tin bao gồm matkhau (plain-text)
--- SP sẽ hash mật khẩu trước khi lưu
+-- SP: Tạo nhân viên + tài khoản trong 1 transaction
+-- Form UI: Tên, SĐT, Email, Mật khẩu, Chi nhánh, Chức vụ, Loại NV
+-- @matkhau: hash bcrypt từ backend (VD: $2b$10$...)
 -- ============================================================
 CREATE PROCEDURE dbo.SP_TaoNhanVien
     @machinhanh         VARCHAR(10),
     @maloainhanvien     VARCHAR(10),    -- 'LNV01' = Fulltime | 'LNV02' = Parttime
-    @machucvu           CHAR(10),
+    @machucvu           CHAR(10),       -- Chức vụ (combobox trong form UI)
     @hoten              NVARCHAR(50),
     @email              VARCHAR(50)     = NULL,
     @sodienthoai        CHAR(10),
-    @matkhau            VARCHAR(255),   -- plain-text, SP sẽ hash SHA2_256
-    @manhanvien_out     VARCHAR(10)     OUTPUT  -- trả về mã vừa sinh
+    @matkhau            VARCHAR(255),   -- hash bcrypt từ backend
+    @manhanvien_out     VARCHAR(10)     OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -445,32 +441,225 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        -- Bước 1: INSERT nhân viên (trigger sẽ sinh mã + tạo Tai_khoan với pw mặc định)
+        -- Bước 1: INSERT nhân viên (trigger sinh mã + tạo Tai_khoan tạm)
         INSERT INTO dbo.Nhan_vien
             (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
         VALUES
             (@machinhanh, @maloainhanvien, @machucvu, @hoten, @email, @sodienthoai);
 
-        -- Bước 2: Lấy mã vừa sinh (sodienthoai là UNIQUE nên an toàn)
+        -- Bước 2: Lấy mã vừa sinh
         SELECT @manhanvien_out = manhanvien
         FROM dbo.Nhan_vien
         WHERE sodienthoai = @sodienthoai;
 
-        -- Bước 3: Cập nhật mật khẩu đúng theo người dùng nhập
-        -- (trigger đã tạo dòng Tai_khoan với pw tạm = hash(SĐT))
+        -- Bước 3: Ghi hash bcrypt thực vào Tai_khoan
         UPDATE dbo.Tai_khoan
-        SET matkhau = CONVERT(VARCHAR(255), HASHBYTES('SHA2_256', @matkhau), 2)
+        SET matkhau = @matkhau
         WHERE manhanvien = @manhanvien_out;
 
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-
-        DECLARE @ErrMsg  NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrSev  INT            = ERROR_SEVERITY();
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrSev INT            = ERROR_SEVERITY();
         RAISERROR(@ErrMsg, @ErrSev, 1);
     END CATCH
 END;
 GO
 
+-- ============================================================
+-- SP: Cập nhật thông tin nhân viên + tài khoản (UC 2.2)
+-- Form UI cho phép sửa: Tên, SĐT, Email, Chức vụ, Loại NV, Chi nhánh
+-- Mật khẩu: nếu @matkhauMoi IS NULL → giữ nguyên, không đổi
+-- ============================================================
+CREATE PROCEDURE dbo.SP_CapNhatNhanVien
+    @manhanvien         VARCHAR(10),
+    @machinhanh         VARCHAR(10),
+    @maloainhanvien     VARCHAR(10),
+    @machucvu           CHAR(10),
+    @hoten              NVARCHAR(50),
+    @email              VARCHAR(50)     = NULL,
+    @sodienthoai        CHAR(10),
+    @matkhauMoi         VARCHAR(255)    = NULL  -- NULL = không đổi mật khẩu
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Kiểm tra nhân viên tồn tại
+        IF NOT EXISTS (SELECT 1 FROM dbo.Nhan_vien WHERE manhanvien = @manhanvien)
+        BEGIN
+            RAISERROR(N'Nhân viên không tồn tại.', 16, 1);
+            RETURN;
+        END
+
+        -- Cập nhật thông tin nhân viên
+        -- Lưu ý: trigger trg_NhanVien_DoiSDT tự đồng bộ tendangnhap nếu SĐT thay đổi
+        UPDATE dbo.Nhan_vien
+        SET machinhanh      = @machinhanh,
+            maloainhanvien  = @maloainhanvien,
+            machucvu        = @machucvu,
+            hoten           = @hoten,
+            email           = @email,
+            sodienthoai     = @sodienthoai
+        WHERE manhanvien = @manhanvien;
+
+        -- Cập nhật mật khẩu nếu có truyền vào
+        IF @matkhauMoi IS NOT NULL AND LEN(TRIM(@matkhauMoi)) > 0
+        BEGIN
+            UPDATE dbo.Tai_khoan
+            SET matkhau          = @matkhauMoi,
+                solansaidangnhap = 0
+            WHERE manhanvien = @manhanvien;
+        END
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrSev INT            = ERROR_SEVERITY();
+        RAISERROR(@ErrMsg, @ErrSev, 1);
+    END CATCH
+END;
+GO
+
+-- ============================================================
+-- SP: Xóa nhân viên (UC 2.3)
+-- Cascade tự xóa: Tai_khoan, Dang_ky_lich_lam, Cham_cong
+-- SP chỉ cần DELETE Nhan_vien, DB tự lo phần còn lại
+-- ============================================================
+CREATE PROCEDURE dbo.SP_XoaNhanVien
+    @manhanvien     VARCHAR(10)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        IF NOT EXISTS (SELECT 1 FROM dbo.Nhan_vien WHERE manhanvien = @manhanvien)
+        BEGIN
+            RAISERROR(N'Nhân viên không tồn tại.', 16, 1);
+            RETURN;
+        END
+
+        -- Xóa nhân viên — cascade tự xóa Tai_khoan, Dang_ky_lich_lam, Cham_cong
+        DELETE FROM dbo.Nhan_vien WHERE manhanvien = @manhanvien;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrSev INT            = ERROR_SEVERITY();
+        RAISERROR(@ErrMsg, @ErrSev, 1);
+    END CATCH
+END;
+GO
+
+-- ============================================================
+-- SP: Đổi mật khẩu
+-- Việc xác thực mật khẩu cũ (bcrypt.compare) làm ở backend
+-- SP chỉ nhận hash mới và lưu thẳng
+-- ============================================================
+CREATE PROCEDURE dbo.SP_DoiMatKhau
+    @manhanvien     VARCHAR(10),
+    @matkhauMoi     VARCHAR(255)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        IF NOT EXISTS (SELECT 1 FROM dbo.Tai_khoan WHERE manhanvien = @manhanvien)
+        BEGIN
+            RAISERROR(N'Tài khoản không tồn tại.', 16, 1);
+            RETURN;
+        END
+
+        UPDATE dbo.Tai_khoan
+        SET matkhau          = @matkhauMoi,
+            solansaidangnhap = 0
+        WHERE manhanvien = @manhanvien;
+
+    END TRY
+    BEGIN CATCH
+        RAISERROR(N'Lỗi đổi mật khẩu: %s', 16, 1, ERROR_MESSAGE());
+    END CATCH
+END;
+GO
+
+-- ============================================================
+-- DỮ LIỆU MẪU
+-- ============================================================
+
+-- Loại nhân viên
+INSERT INTO dbo.Loai_nhan_vien (maloainhanvien, tenloainhanvien) VALUES
+    ('LNV01', N'Fulltime'),
+    ('LNV02', N'Parttime');
+
+-- Chức vụ (combobox "Chức vụ" trong form Thêm/Sửa tài khoản)
+INSERT INTO dbo.Chuc_vu (machucvu, tenchucvu) VALUES
+    ('CV01      ', N'Quản lý'),
+    ('CV02      ', N'Nhân viên'),
+    ('CV03      ', N'Thu ngân');
+
+-- Chi nhánh (trigger sinh CN01, CN02)
+INSERT INTO dbo.Chi_nhanh (tenchinhanh, diachi, sdtcn, giomocua, giodongcua)
+VALUES
+    (N'Hygge Hoàn Kiếm',  N'12 Hàng Bài, Hoàn Kiếm, Hà Nội',  '0241000001', '07:00', '22:00'),
+    (N'Hygge Cầu Giấy',   N'45 Xuân Thủy, Cầu Giấy, Hà Nội',   '0241000002', '07:00', '22:00');
+
+-- Ca làm (trigger sinh C01, C02, C03)
+INSERT INTO dbo.Ca_lam (tenca, batdau, ketthuc) VALUES
+    (N'Ca sáng',  '07:00', '12:00'),
+    (N'Ca chiều', '12:00', '17:00'),
+    (N'Ca tối',   '17:00', '22:00');
+
+-- Nhân viên mẫu qua SP
+DECLARE @ma1 VARCHAR(10), @ma2 VARCHAR(10);
+
+EXEC dbo.SP_TaoNhanVien
+    @machinhanh         = 'CN01',
+    @maloainhanvien     = 'LNV01',
+    @machucvu           = 'CV01      ',
+    @hoten              = N'Nguyễn Văn An',
+    @email              = 'an.nguyen@hygge.vn',
+    @sodienthoai        = '0901111111',
+    @matkhau            = 'Hygge@2025',
+    @manhanvien_out     = @ma1 OUTPUT;
+
+EXEC dbo.SP_TaoNhanVien
+    @machinhanh         = 'CN01',
+    @maloainhanvien     = 'LNV02',
+    @machucvu           = 'CV02      ',
+    @hoten              = N'Trần Thị Bình',
+    @email              = 'binh.tran@hygge.vn',
+    @sodienthoai        = '0902222222',
+    @matkhau            = 'Hygge@2025',
+    @manhanvien_out     = @ma2 OUTPUT;
+
+PRINT N'Mã NV 1: ' + @ma1;   -- NVF0001
+PRINT N'Mã NV 2: ' + @ma2;   -- NVP0001
+
+-- Lịch làm
+INSERT INTO dbo.Lich_lam (maca, ngay) VALUES
+    ('C01      ', '2025-06-16'),
+    ('C02      ', '2025-06-16');
+
+-- Đăng ký lịch làm
+INSERT INTO dbo.Dang_ky_lich_lam (manhanvien, malichlam) VALUES
+    (@ma1, '16062025C01'),
+    (@ma2, '16062025C02');
+
+-- Chấm công
+INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, trangthaicheckin)
+VALUES
+    (@ma1, '16062025C01', '2025-06-16 07:05:00', 1),   -- muộn 5 phút
+    (@ma2, '16062025C02', '2025-06-16 12:00:00', 0);   -- đúng giờ
+
+PRINT N'Schema v3 tạo thành công — HyggeDB';
+GO

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Quản lý chi nhánh</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/chinhanh.css" />
+</head>
+<body>
+
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+
+        <!-- ── Stat cards ── -->
+        <div class="stat-grid" id="stat-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M3 9l1-5h16l1 5"/><path d="M3 9v10h18V9"/><path d="M9 21v-6h6v6"/></svg>
+            </div>
+            <div class="stat-label">Tổng chi nhánh</div>
+            <div class="stat-value" id="s-total">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
+            </div>
+            <div class="stat-label">Đang hoạt động</div>
+            <div class="stat-value" id="s-active">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            </div>
+            <div class="stat-label">Ngừng hoạt động</div>
+            <div class="stat-value" id="s-inactive">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>
+            </div>
+            <div class="stat-label">Tổng nhân viên</div>
+            <div class="stat-value" id="s-staff">—</div>
+          </div>
+        </div>
+
+        <!-- ── Toolbar ── -->
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <div class="search-wrap">
+              <span class="search-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+              </span>
+              <input id="search-input" class="form-control"
+                     style="padding-left:32px; width:260px;"
+                     placeholder="Tìm tên hoặc địa chỉ chi nhánh…"
+                     oninput="filterBranches()" />
+            </div>
+            <select id="filter-status" class="form-control" style="width:160px;" onchange="filterBranches()">
+              <option value="">Tất cả trạng thái</option>
+              <option value="1">Đang hoạt động</option>
+              <option value="0">Ngừng hoạt động</option>
+            </select>
+          </div>
+          <div class="page-bar-right">
+            <button class="btn btn-primary" onclick="openAddPanel()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+              Thêm chi nhánh
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Branch grid ── -->
+        <div class="branch-grid" id="branch-grid"></div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="empty-state" style="display:none;">
+          <div class="empty-icon">🏬</div>
+          <p>Không tìm thấy chi nhánh nào.</p>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ══ SIDE PANEL: Thêm / Sửa ══ -->
+  <div class="side-overlay" id="side-overlay" onclick="closeSidePanel('branch-panel')"></div>
+  <div class="side-panel" id="branch-panel">
+    <div class="side-panel-header">
+      <span class="side-panel-title" id="panel-title">Thêm chi nhánh</span>
+      <button class="btn-icon" onclick="closeSidePanel('branch-panel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="side-panel-body">
+      <input type="hidden" id="f-id" />
+
+      <div class="form-group">
+        <label class="form-label">Tên chi nhánh <span style="color:var(--red)">*</span></label>
+        <input id="f-ten" class="form-control" placeholder="VD: Chi nhánh Hoàn Kiếm" />
+        <div class="form-error" id="e-ten"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Địa chỉ <span style="color:var(--red)">*</span></label>
+        <input id="f-diachi" class="form-control" placeholder="Số nhà, đường, quận/huyện…" />
+        <div class="form-error" id="e-diachi"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Số điện thoại <span style="color:var(--red)">*</span></label>
+        <input id="f-sdt" class="form-control" placeholder="0xxxxxxxxx" maxlength="10" />
+        <div class="form-error" id="e-sdt"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Giờ mở cửa <span style="color:var(--red)">*</span></label>
+          <input id="f-mo" class="form-control" type="time" />
+          <div class="form-error" id="e-gio"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giờ đóng cửa <span style="color:var(--red)">*</span></label>
+          <input id="f-dong" class="form-control" type="time" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Trạng thái</label>
+        <select id="f-trangthai" class="form-control">
+          <option value="1">Đang hoạt động</option>
+          <option value="0">Ngừng hoạt động</option>
+        </select>
+      </div>
+    </div>
+    <div class="side-panel-footer">
+      <button class="btn btn-outline" onclick="closeSidePanel('branch-panel')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveBranch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        Lưu
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ CONFIRM MODAL ══ -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal" style="width:400px;">
+      <div class="modal-body" style="text-align:center; padding:28px 24px;">
+        <div class="confirm-icon">🗑️</div>
+        <div class="confirm-title" id="confirm-title">Xóa chi nhánh?</div>
+        <div class="confirm-text" id="confirm-text"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:center; gap:12px;">
+        <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Không</button>
+        <button class="btn btn-danger" onclick="confirmOk()">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/chinhanh.js"></script>
+  <script>
+    initLayout(['quanly']).then(user => {
+      if (!user) return;
+      initChinhanh();
+    });
+  </script>
+</body>
+</html>

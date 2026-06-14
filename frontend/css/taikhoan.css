@@ -1,0 +1,104 @@
+/* =====================================================
+   taikhoan.css — styles riêng trang Quản lý tài khoản
+   Import AFTER main.css.
+===================================================== */
+
+/* ── Stat cards: top accent bar ── */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card--total::before    { background: var(--blue); }
+.stat-card--fulltime::before { background: var(--accent); }
+.stat-card--parttime::before { background: var(--amber); }
+.stat-card--locked::before   { background: var(--red); }
+
+.stat-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.stat-icon--blue   { background: var(--blue-bg);    color: var(--blue); }
+.stat-icon--green  { background: var(--accent-light); color: var(--accent); }
+.stat-icon--amber  { background: var(--amber-bg);   color: var(--amber); }
+.stat-icon--red    { background: var(--red-bg);     color: var(--red); }
+
+/* ── Tab count badge ── */
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tab-btn.active .tab-count {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* ── Avatar ── */
+.nv-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.nv-info { display: flex; flex-direction: column; }
+.nv-name { font-weight: 600; font-size: 13px; color: var(--ink); }
+.nv-role { font-size: 11px; color: var(--ink-muted); margin-top: 1px; }
+
+/* ── Loại badge ── */
+.badge-fulltime { background: var(--accent-light); color: var(--accent); }
+.badge-parttime { background: var(--amber-bg);    color: var(--amber); }
+
+/* ── Trạng thái badge ── */
+.badge-ok     { background: var(--green-bg); color: var(--green); }
+.badge-locked { background: var(--red-bg);   color: var(--red); }
+
+/* ── Action buttons in table ── */
+.action-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.btn-lock {
+  padding: 5px 7px;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background .12s;
+}
+.btn-lock:hover        { background: var(--red-bg); }
+.btn-lock.is-locked    { color: var(--red); }
+.btn-lock.is-locked:hover { background: var(--green-bg); color: var(--green); }
+.btn-lock:not(.is-locked) { color: var(--ink-muted); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}

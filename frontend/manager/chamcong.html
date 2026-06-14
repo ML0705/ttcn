@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Quản lý chấm công</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/chamcong-manager.css" />
+</head>
+<body>
+
+<div class="mobile-overlay" onclick="closeMobileSidebar()"></div>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-root"></aside>
+
+  <div class="main">
+    <header class="header" id="header-root"></header>
+
+    <main class="content">
+
+      <!-- ── Bộ lọc ── -->
+      <div class="filter-section">
+
+        <div class="filter-group">
+          <span class="filter-label">Ngày</span>
+          <div class="date-nav">
+            <button class="date-nav-btn" id="btn-prev-day" title="Ngày trước">‹</button>
+            <input type="date" id="filter-date" />
+            <button class="date-nav-btn" id="btn-next-day" title="Ngày sau">›</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Ca làm</span>
+          <select id="filter-ca">
+            <option value="">Tất cả ca</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Trạng thái</span>
+          <select id="filter-tt">
+            <option value="">Tất cả trạng thái</option>
+            <option value="dunggio">Đúng giờ</option>
+            <option value="muon">Đi muộn</option>
+            <option value="vesom">Về sớm</option>
+            <option value="chuacheckin">Chưa check-in</option>
+            <option value="vang">Vắng</option>
+          </select>
+        </div>
+
+        <div class="filter-group search">
+          <span class="filter-label">Nhân viên</span>
+          <div class="search-wrap">
+            <input type="text" id="filter-search"
+                   placeholder="Tìm tên hoặc mã nhân viên…" />
+          </div>
+        </div>
+
+        <div class="filter-spacer"></div>
+
+        <div class="filter-group" style="justify-content:flex-end;">
+          <span class="filter-label">&nbsp;</span>
+          <button class="btn btn-outline" id="btn-export">
+            ⬇ Xuất báo cáo
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ── Stat cards ── -->
+      <div class="stat-row">
+        <div class="stat-pill accent">
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  </div>
+          <div>
+            <div class="pill-val" id="stat-total">—</div>
+            <div class="pill-lbl">Tổng ca hôm nay</div>
+          </div>
+        </div>
+        <div class="stat-pill green">
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  </div>
+          <div>
+            <div class="pill-val" id="stat-ok">—</div>
+            <div class="pill-lbl">Đúng giờ</div>
+          </div>
+        </div>
+        <div class="stat-pill amber">
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <circle cx="12" cy="13" r="8"/>
+      <path d="M12 9v4l2 2"/>
+      <path d="M5 3 2 6"/>
+      <path d="M22 6l-3-3"/>
+    </svg>
+  </div>
+          <div>
+            <div class="pill-val" id="stat-late">—</div>
+            <div class="pill-lbl">Đi muộn / Về sớm</div>
+          </div>
+        </div>
+        <div class="stat-pill red">
+          <div class="pill-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M15 9l-6 6"/>
+      <path d="M9 9l6 6"/>
+    </svg>
+  </div>
+          <div>
+            <div class="pill-val" id="stat-absent">—</div>
+            <div class="pill-lbl">Vắng / Chưa check-in</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Bảng chấm công ── -->
+      <div class="table-card">
+
+        <div class="table-card-header">
+          <div>
+            <span class="table-card-title" id="table-heading">Chấm công hôm nay</span>
+            <span class="table-count" id="table-count"></span>
+          </div>
+          <div class="tbl-loading" id="tbl-loading">
+            <span class="spinner"></span>
+            <span>Đang tải…</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="cc-table">
+            <thead>
+              <tr>
+                <th style="width:210px;">Nhân viên</th>
+                <th style="width:140px;">Ca làm</th>
+                <th style="width:100px;">Check-in</th>
+                <th style="width:120px;">Check-out</th>
+                <th style="width:100px;" class="hide-sm">Giờ thực tế</th>
+                <th style="width:120px;">Trạng thái</th>
+                <th style="width:80px;text-align:right;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cc-tbody">
+              <!-- Skeleton placeholder -->
+              <tr>
+                <td><div class="skeleton" style="height:14px;width:150px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:36px;margin-left:auto;"></div></td>
+              </tr>
+              <tr>
+                <td><div class="skeleton" style="height:14px;width:120px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:50px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:80px;"></div></td>
+                <td><div class="skeleton" style="height:14px;width:36px;margin-left:auto;"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span class="page-info" id="page-info">—</span>
+          <div class="pagination" id="pagination"></div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+
+<!-- ══ MODAL CHỈNH SỬA CHẤM CÔNG ══ -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+
+    <div class="modal-header">
+      <span class="modal-title">Chỉnh sửa chấm công</span>
+      <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Thông tin ca -->
+      <div class="edit-info-bar">
+        <div class="info-item">
+          <span class="info-label">Nhân viên</span>
+          <span class="info-val" id="edit-nv-name">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Ca làm</span>
+          <span class="info-val" id="edit-ca-name">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Ngày</span>
+          <span class="info-val" id="edit-ngay">—</span>
+        </div>
+      </div>
+
+      <!-- Giờ quy định -->
+      <div class="alert alert-info" style="margin-bottom:16px;">
+        📋 <span id="edit-quydinh-text">—</span>
+      </div>
+
+      <!-- Form -->
+      <div class="time-inputs">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Giờ check-in</label>
+          <input type="time" id="edit-checkin" class="form-control" />
+          <div class="form-error" id="err-checkin"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Giờ check-out</label>
+          <input type="time" id="edit-checkout" class="form-control" />
+          <div class="form-error" id="err-checkout"></div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">
+          Lý do chỉnh sửa <span style="color:var(--red);">*</span>
+        </label>
+        <textarea id="edit-lydo" class="form-control" rows="3"
+                  placeholder="Nhập lý do chỉnh sửa…"
+                  style="resize:vertical;"></textarea>
+        <div class="form-error" id="err-lydo"></div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit')">Hủy</button>
+      <button class="btn btn-primary" id="btn-save-edit" onclick="saveEdit()">
+        Lưu thay đổi
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ CONFIRM POPUP (dùng chung từ shared.js) ══ -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-body" style="padding:28px 24px 16px;text-align:center;">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-title" id="confirm-title">Xác nhận</div>
+      <div class="confirm-text"  id="confirm-text"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('confirm-modal')">Không</button>
+      <button class="btn btn-danger"  onclick="confirmOk()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="/js/shared.js"></script>
+<script src="/js/chamcong-manager.js"></script>
+
+</body>
+</html>
