@@ -28,7 +28,7 @@ let mockCaLam = [
 
 /* ── State ── */
 let _editingMa  = null;   // null = thêm mới
-let _tkCbCalm   = null;   // local confirm callback (tránh xung đột shared.js)
+
 
 /* ══════════════════════════════════════════
    INIT
@@ -307,7 +307,7 @@ function askDelete(maca) {
     ? `Ca này đang có ${ca.solichdangdung} lịch làm liên kết. Xóa sẽ ảnh hưởng đến lịch của nhân viên.`
     : 'Bạn có chắc muốn xóa ca làm này?';
 
-  _tkCbCalm = () => deleteCalm(maca);
+  _confirmCb = () => deleteCalm(maca);
   openModal('confirm-modal');
 }
 
@@ -319,8 +319,3 @@ function deleteCalm(maca) {
   /* TODO: await apiFetch(`/api/calm/${maca}`, 'DELETE') */
 }
 
-/* Override confirmOk của shared.js */
-function confirmOk() {
-  closeModal('confirm-modal');
-  if (_tkCbCalm) { _tkCbCalm(); _tkCbCalm = null; }
-}

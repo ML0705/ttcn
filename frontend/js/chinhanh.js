@@ -306,3 +306,7 @@ function deleteBranch(id) {
 }
 
 /* ── confirmOk đã được khai báo trong shared.js ── */
+initLayout(['quanly']).then(user => {
+  if (!user) return;
+  initChinhanh();
+});

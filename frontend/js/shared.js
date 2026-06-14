@@ -57,7 +57,7 @@ const PAGE_TITLES = {
   '/manager/chamcong.html':   'Quản lý chấm công',
   '/manager/chinhanh.html':   'Quản lý chi nhánh',
   '/manager/taikhoan.html':   'Quản lý tài khoản',
-  '/manager/calm.html':       'Quản lý ca làm',
+  '/manager/calam.html':       'Quản lý ca làm',
 };
 
 const ICON_SVG = {
@@ -125,11 +125,11 @@ function renderHeader(role, user) {
     <div class="header-title">${title}</div>
     <div class="header-right">
       <div class="notif-wrap">
-        <button class="notif-btn" onclick="toggleNotif()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
+        <button class="notif-btn" onclick="toggleDropdown('notif-dropdown')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+         </svg>
   ${notifCount > 0 ? `<span class="notif-badge" id="notif-count">${notifCount}</span>` : ''}
 </button>
         <div class="notif-dropdown" id="notif-dropdown">
@@ -138,7 +138,30 @@ function renderHeader(role, user) {
           <div class="notif-footer">Xem tất cả</div>
         </div>
       </div>
-      <div class="header-avatar" title="${user?.hoten || ''}">${initials}</div>
+      <!-- Avatar: bấm vào để xem thông tin cá nhân + đăng xuất -->
+      <div class="notif-wrap">
+        <div class="header-avatar" title="${user?.hoten || ''}" onclick="toggleDropdown('user-dropdown')">${initials}</div>
+        <div class="notif-dropdown" id="user-dropdown" style="width: 260px;">
+          <div class="notif-header"><span>Thông tin cá nhân</span></div>
+          <div class="notif-list">
+            <div style="padding: 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border);">
+              <div class="header-avatar" style="width: 40px; height: 40px; font-size: 14px; cursor: default;">${initials}</div>
+              <div>
+                <div style="font-weight: 700; font-size: 13px;">${user?.hoten || ''}</div>
+                <div class="text-sm text-muted">${user?.tenchucvu || (role === 'quanly' ? 'Quản lý' : 'Nhân viên')}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 14px; font-size: 12px; color: var(--ink-soft); line-height: 2;">
+              <div> Mã NV: <strong>${user?.manhanvien || '--'}</strong></div>
+              <div> SĐT: <strong>${user?.sodienthoai || '--'}</strong></div>
+              <div> Email: <strong>${user?.email || '--'}</strong></div>
+              <div> Chi nhánh: <strong>${user?.tenchinhanh || '--'}</strong></div>
+              <div> Loại NV: <strong>${user?.tenloainhanvien || '--'}</strong></div>
+            </div>
+          </div>
+          <div class="notif-footer" style="text-align: left; color: var(--red);" onclick="logout()">🚪 Đăng xuất</div>
+        </div>
+      </div>
     </div>`;
 
   const badge = document.getElementById('role-badge');
@@ -218,15 +241,29 @@ function closeModal(id) {
 
 /* ---------------- 6. NOTIFICATION DROPDOWN ---------------- */
 
-function toggleNotif() {
-  document.getElementById('notif-dropdown')?.classList.toggle('open');
+/**
+ * Mở/đóng 1 dropdown theo id, tự đóng các dropdown khác đang mở.
+ * Dùng cho cả #notif-dropdown (chuông) và #user-dropdown (avatar).
+ */
+function toggleDropdown(id) {
+  document.querySelectorAll('.notif-dropdown').forEach(dd => {
+    if (dd.id !== id) dd.classList.remove('open');
+  });
+  document.getElementById(id)?.classList.toggle('open');
 }
+ 
+// Đóng dropdown khi bấm ra ngoài
 document.addEventListener('click', e => {
-  const wrap = document.querySelector('.notif-wrap');
-  const dd = document.getElementById('notif-dropdown');
-  if (dd && wrap && !wrap.contains(e.target)) dd.classList.remove('open');
+  document.querySelectorAll('.notif-wrap').forEach(wrap => {
+    if (!wrap.contains(e.target)) {
+      wrap.querySelector('.notif-dropdown')?.classList.remove('open');
+    }
+  });
 });
-
+function logout() {
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
 
 /* ---------------- 7. TOAST ---------------- */
 
