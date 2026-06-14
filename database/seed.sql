@@ -1,5 +1,6 @@
 ﻿-- ============================================================
 -- HYGGE — DỮ LIỆU MẪU (seed_v3.sql)
+<<<<<<< HEAD
 -- Khớp với schema_v3.sql (cascade delete + SP mới)
 -- Lưu ý:
 --   · Không INSERT vào Tai_khoan trực tiếp —
@@ -7,6 +8,14 @@
 --   · Dùng SP_TaoNhanVien để tạo NV với mật khẩu tùy chỉnh
 --   · Dùng SP_CapNhatNhanVien để sửa thông tin NV (UC 2.2)
 --   · Dùng SP_XoaNhanVien để xóa NV, cascade tự dọn dữ liệu liên quan (UC 2.3)
+=======
+-- Khớp với schema_v3.sql
+-- Lưu ý:
+--   · Không INSERT vào Tai_khoan trực tiếp —
+--     trigger trg_Nhan_vien_SinhMa tự tạo dòng Tai_khoan
+--     (tendangnhap = sodienthoai, matkhau = hash SHA2_256 của SĐT)
+--   · Nếu muốn mật khẩu tùy chỉnh, dùng SP_TaoNhanVien thay vì INSERT thẳng
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 -- ============================================================
 
 -- ============================================================
@@ -59,6 +68,7 @@ VALUES ('CV01', N'Quản lý'), ('CV02', N'Nhân viên bán hàng');
 GO
 
 -- ============================================================
+<<<<<<< HEAD
 -- 3. NHÂN VIÊN — dùng SP_TaoNhanVien (hash bcrypt = Hygge@2025)
 -- ============================================================
 DECLARE
@@ -122,6 +132,30 @@ EXEC dbo.SP_TaoNhanVien
 
 PRINT N'NV1=' + @maNV1 + N' | NV2=' + @maNV2 + N' | NV3=' + @maNV3 +
       N' | NV4=' + @maNV4 + N' | NV5=' + @maNV5;
+=======
+-- 3. NHÂN VIÊN — INSERT từng dòng, trigger sinh mã + TỰ TẠO Tai_khoan
+--    Không cần (và không được) INSERT Tai_khoan thêm bên dưới
+-- ============================================================
+INSERT INTO dbo.Nhan_vien (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+VALUES ((SELECT machinhanh FROM dbo.Chi_nhanh WHERE tenchinhanh = N'Chi nhánh Đống Đa'),
+        'LNV01', 'CV01', N'Tạ Mai Phương', 'maiphuong@hygge.vn', '0901111111');
+
+INSERT INTO dbo.Nhan_vien (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+VALUES ((SELECT machinhanh FROM dbo.Chi_nhanh WHERE tenchinhanh = N'Chi nhánh Đống Đa'),
+        'LNV02', 'CV02', N'Nguyễn Thị Mỹ Hạnh', 'myhanh@hygge.vn', '0902222222');
+
+INSERT INTO dbo.Nhan_vien (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+VALUES ((SELECT machinhanh FROM dbo.Chi_nhanh WHERE tenchinhanh = N'Chi nhánh Đống Đa'),
+        'LNV02', 'CV02', N'Trần Văn An', 'tranan@hygge.vn', '0903333333');
+
+INSERT INTO dbo.Nhan_vien (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+VALUES ((SELECT machinhanh FROM dbo.Chi_nhanh WHERE tenchinhanh = N'Chi nhánh Cầu Giấy'),
+        'LNV01', 'CV01', N'Lê Thị Bình', 'thibinh@hygge.vn', '0904444444');
+
+INSERT INTO dbo.Nhan_vien (machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
+VALUES ((SELECT machinhanh FROM dbo.Chi_nhanh WHERE tenchinhanh = N'Chi nhánh Cầu Giấy'),
+        'LNV02', 'CV02', N'Phạm Quốc Huy', 'quochuy@hygge.vn', '0905555555');
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 GO
 
 -- ============================================================
@@ -150,7 +184,11 @@ GO
 -- ============================================================
 -- 6. ĐĂNG KÝ LỊCH LÀM
 -- ============================================================
+<<<<<<< HEAD
 -- Mỹ Hạnh (NV2): Ca sáng 16,18,20 | Ca chiều 17
+=======
+-- Nguyễn Thị Mỹ Hạnh (0902222222): Ca sáng 16,18,20 | Ca chiều 17
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 INSERT INTO dbo.Dang_ky_lich_lam (manhanvien, malichlam)
 SELECT nv.manhanvien, ll.malichlam
 FROM dbo.Nhan_vien nv
@@ -162,7 +200,11 @@ WHERE nv.sodienthoai = '0902222222'
       (ll.ngay = '2025-06-17' AND cl.tenca = N'Ca chiều')
   );
 
+<<<<<<< HEAD
 -- Trần Văn An (NV3): Ca chiều 16,17 | Ca tối 19
+=======
+-- Trần Văn An (0903333333): Ca chiều 16,17 | Ca tối 19
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 INSERT INTO dbo.Dang_ky_lich_lam (manhanvien, malichlam)
 SELECT nv.manhanvien, ll.malichlam
 FROM dbo.Nhan_vien nv
@@ -174,14 +216,18 @@ WHERE nv.sodienthoai = '0903333333'
       (ll.ngay = '2025-06-19' AND cl.tenca = N'Ca tối')
   );
 
+<<<<<<< HEAD
 -- Tạ Mai Phương (NV1): Ca sáng toàn bộ ngày
+=======
+-- Tạ Mai Phương (0901111111): Ca sáng toàn bộ các ngày
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 INSERT INTO dbo.Dang_ky_lich_lam (manhanvien, malichlam)
 SELECT nv.manhanvien, ll.malichlam
 FROM dbo.Nhan_vien nv
 CROSS JOIN dbo.Lich_lam ll
 INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
 WHERE nv.sodienthoai = '0901111111'
-  AND ll.ngay IN ('2025-06-16','2025-06-17','2025-06-18','2025-06-19','2025-06-20')
+  AND ll.ngay IN ('2025-06-16', '2025-06-17', '2025-06-18', '2025-06-19', '2025-06-20')
   AND cl.tenca = N'Ca sáng';
 GO
 
@@ -192,7 +238,12 @@ GO
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0902222222'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-16' AND cl.tenca = N'Ca sáng'),
     '2025-06-16 07:58', '2025-06-16 12:03', 0, 0
 );
@@ -201,7 +252,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0901111111'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-16' AND cl.tenca = N'Ca sáng'),
     '2025-06-16 08:00', '2025-06-16 12:00', 0, 0
 );
@@ -210,7 +266,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0903333333'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-16' AND cl.tenca = N'Ca chiều'),
     '2025-06-16 13:15', '2025-06-16 17:05', 1, 0
 );
@@ -219,7 +280,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0902222222'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-17' AND cl.tenca = N'Ca chiều'),
     '2025-06-17 13:00', '2025-06-17 17:00', 0, 0
 );
@@ -228,7 +294,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0903333333'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-17' AND cl.tenca = N'Ca chiều'),
     '2025-06-17 13:02', '2025-06-17 16:40', 0, 1
 );
@@ -237,7 +308,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0902222222'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-18' AND cl.tenca = N'Ca sáng'),
     '2025-06-18 07:55', '2025-06-18 12:00', 0, 0
 );
@@ -246,7 +322,12 @@ VALUES (
 INSERT INTO dbo.Cham_cong (manhanvien, malichlam, checkin, checkout, trangthaicheckin, trangthaicheckout)
 VALUES (
     (SELECT manhanvien FROM dbo.Nhan_vien WHERE sodienthoai = '0901111111'),
+<<<<<<< HEAD
     (SELECT ll.malichlam FROM dbo.Lich_lam ll INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+=======
+    (SELECT ll.malichlam FROM dbo.Lich_lam ll
+     INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
      WHERE ll.ngay = '2025-06-18' AND cl.tenca = N'Ca sáng'),
     '2025-06-18 08:00', '2025-06-18 12:00', 0, 0
 );
@@ -284,9 +365,15 @@ UNION ALL
 SELECT 'Lich_lam',  malichlam                     FROM dbo.Lich_lam
 ORDER BY 1, 2;
 
+<<<<<<< HEAD
 SELECT COUNT(*) AS [So_tai_khoan]   FROM dbo.Tai_khoan;
 SELECT COUNT(*) AS [Dang_ky_lich]   FROM dbo.Dang_ky_lich_lam;
 SELECT COUNT(*) AS [Cham_cong]      FROM dbo.Cham_cong;
+=======
+SELECT COUNT(*) AS [So_tai_khoan_tu_dong]  FROM dbo.Tai_khoan;
+SELECT COUNT(*) AS [Dang_ky_lich_lam]      FROM dbo.Dang_ky_lich_lam;
+SELECT COUNT(*) AS [Cham_cong]             FROM dbo.Cham_cong;
+>>>>>>> 5c50580bcc708995f15064bfbc6671f0bbf06fe3
 GO
 
 PRINT N'✅ Hoàn thành seed_v3 — không lỗi';

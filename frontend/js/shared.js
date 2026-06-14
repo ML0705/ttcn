@@ -1,6 +1,7 @@
+
 /* ===================================================================
    HYGGE – shared.js (dùng chung cho mọi trang frontend)
-
+ 
    GHI CHÚ KIẾN TRÚC
    - Dự án dùng nhiều trang HTML riêng (MPA), KHÔNG phải SPA.
    - Hàm navigate() kiểu cũ (ẩn/hiện .page-view trong 1 trang) đã bị
@@ -16,10 +17,10 @@
      "/employee/..." hay "/manager/..." trong MENU_CONFIG luôn đúng,
      bất kể trang hiện tại đang nằm ở thư mục nào.
 =================================================================== */
-
-
+ 
+ 
 /* ---------------- 1. CẤU HÌNH MENU DÙNG CHUNG CHO 2 ROLE ---------------- */
-
+ 
 const MENU_CONFIG = [
   {
     group: 'Cá nhân',
@@ -46,7 +47,7 @@ const MENU_CONFIG = [
     ],
   },
 ];
-
+ 
 /* Tiêu đề header tương ứng từng trang (key = pathname) */
 const PAGE_TITLES = {
   '/employee/dashboard.html': 'Dashboard cá nhân',
@@ -59,7 +60,7 @@ const PAGE_TITLES = {
   '/manager/taikhoan.html':   'Quản lý tài khoản',
   '/manager/calm.html':       'Quản lý ca làm',
 };
-
+ 
 const ICON_SVG = {
   '📊': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
   '📅': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
@@ -70,13 +71,13 @@ const ICON_SVG = {
   '🏬': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 9l1-5h16l1 5"/><path d="M3 9v10h18V9"/><path d="M9 21v-6h6v6"/></svg>`,
   '👥': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>`,
   '🗓️': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
-};
+}; 
 /* ---------------- 2. DỰNG SIDEBAR ---------------- */
-
+ 
 function renderSidebar(role) {
   const root = document.getElementById('sidebar-root');
   if (!root) return;
-
+ 
   const currentPath = window.location.pathname;
   let html = `
     <div class="sidebar-logo">
@@ -84,11 +85,11 @@ function renderSidebar(role) {
       <div class="sub" id="role-badge"></div>
     </div>
     <nav class="sidebar-menu">`;
-
+ 
   MENU_CONFIG.forEach(group => {
     const items = group.items.filter(i => i.roles.includes(role));
     if (items.length === 0) return; // ẩn cả nhóm nếu role không có quyền nào trong nhóm
-
+ 
     html += `<div class="sidebar-section-label">${group.group}</div>`;
     items.forEach(item => {
       const active = currentPath === item.href ? ' active' : '';
@@ -99,18 +100,18 @@ function renderSidebar(role) {
         </a>`;
     });
   });
-
+ 
   html += `</nav>`;
   root.innerHTML = html;
 }
-
-
+ 
+ 
 /* ---------------- 3. DỰNG HEADER (tiêu đề trang + chuông + avatar) ---------------- */
-
+ 
 function renderHeader(role, user) {
   const root = document.getElementById('header-root');
   if (!root) return;
-
+ 
   const title = PAGE_TITLES[window.location.pathname] || '';
   const initials = (user?.hoten || 'NV')
     .split(' ')
@@ -118,14 +119,14 @@ function renderHeader(role, user) {
     .slice(-2)
     .join('')
     .toUpperCase();
-
+ 
   const notifCount = 0; // TODO: thay bằng số thông báo chưa đọc thật
   root.innerHTML = `
     <button class="header-menu-btn" onclick="toggleMobileSidebar()">☰</button>
     <div class="header-title">${title}</div>
     <div class="header-right">
       <div class="notif-wrap">
-        <button class="notif-btn" onclick="toggleNotif()">
+        <button class="notif-btn" onclick="toggleDropdown('notif-dropdown')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -138,9 +139,33 @@ function renderHeader(role, user) {
           <div class="notif-footer">Xem tất cả</div>
         </div>
       </div>
-      <div class="header-avatar" title="${user?.hoten || ''}">${initials}</div>
+ 
+      <!-- Avatar: bấm vào để xem thông tin cá nhân + đăng xuất -->
+      <div class="notif-wrap">
+        <div class="header-avatar" title="${user?.hoten || ''}" onclick="toggleDropdown('user-dropdown')">${initials}</div>
+        <div class="notif-dropdown" id="user-dropdown" style="width: 260px;">
+          <div class="notif-header"><span>Thông tin cá nhân</span></div>
+          <div class="notif-list">
+            <div style="padding: 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border);">
+              <div class="header-avatar" style="width: 40px; height: 40px; font-size: 14px; cursor: default;">${initials}</div>
+              <div>
+                <div style="font-weight: 700; font-size: 13px;">${user?.hoten || ''}</div>
+                <div class="text-sm text-muted">${user?.tenchucvu || (role === 'quanly' ? 'Quản lý' : 'Nhân viên')}</div>
+              </div>
+            </div>
+            <div style="padding: 12px 14px; font-size: 12px; color: var(--ink-soft); line-height: 2;">
+              <div>🆔 Mã NV: <strong>${user?.manhanvien || '--'}</strong></div>
+              <div>📱 SĐT: <strong>${user?.sodienthoai || '--'}</strong></div>
+              <div>✉️ Email: <strong>${user?.email || '--'}</strong></div>
+              <div>🏬 Chi nhánh: <strong>${user?.tenchinhanh || '--'}</strong></div>
+              <div>📁 Loại NV: <strong>${user?.tenloainhanvien || '--'}</strong></div>
+            </div>
+          </div>
+          <div class="notif-footer" style="text-align: left; color: var(--red);" onclick="logout()">🚪 Đăng xuất</div>
+        </div>
+      </div>
     </div>`;
-
+ 
   const badge = document.getElementById('role-badge');
   if (badge) {
     badge.textContent =
@@ -148,23 +173,40 @@ function renderHeader(role, user) {
       (user?.tenchinhanh ? ' · ' + user.tenchinhanh : '');
   }
 }
-
-
+ 
+ 
 /* ---------------- 4. ĐĂNG NHẬP / PHÂN QUYỀN ----------------
    Đây là điểm tích hợp API auth (Giai đoạn 3, bước 1).
    - Hiện tại: dùng "mockUser" trong localStorage để dựng & test
      sidebar/giao diện khi backend chưa xong.
    - Khi backend xong: xoá nhánh mockUser, bật đoạn fetch thật.
+ 
+   GHI CHÚ MAP DỮ LIỆU (theo schema_v3.sql / seed_v3.sql):
+   - Đối tượng user (mockUser hoặc /api/auth/me) nên có đủ các field
+     sau để renderHeader() ở trên hiển thị "đầy đủ thông tin":
+       manhanvien      <- Nhan_vien.manhanvien   (vd: NVP0001)
+       hoten           <- Nhan_vien.hoten
+       email           <- Nhan_vien.email
+       sodienthoai     <- Nhan_vien.sodienthoai  (= Tai_khoan.tendangnhap)
+       role            <- 'nhanvien' | 'quanly'  (suy ra từ Chuc_vu.tenchucvu,
+                          'Quản lý' => 'quanly', còn lại => 'nhanvien')
+       tenchucvu       <- Chuc_vu.tenchucvu      (JOIN theo Nhan_vien.machucvu)
+       tenloainhanvien <- Loai_nhan_vien.tenloainhanvien (JOIN theo maloainhanvien)
+       machinhanh      <- Nhan_vien.machinhanh
+       tenchinhanh     <- Chi_nhanh.tenchinhanh  (JOIN theo machinhanh)
+   - Khi có API thật, /api/auth/me nên trả về 1 JOIN của 4 bảng:
+     Nhan_vien x Chi_nhanh x Chuc_vu x Loai_nhan_vien (theo manhanvien
+     lấy từ token đăng nhập).
 ------------------------------------------------------------- */
-
+ 
 async function getCurrentUser() {
   const token = localStorage.getItem('token');
   if (!token) return null;
-
+ 
   /* --- TẠM THỜI (chưa có API /api/auth/me) --- */
   const mock = localStorage.getItem('mockUser');
   if (mock) return JSON.parse(mock);
-
+ 
   /* --- KHI BACKEND XONG: bỏ comment đoạn dưới, xoá đoạn mock trên --- */
   // try {
   //   const res = await fetch('/api/auth/me', {
@@ -175,10 +217,10 @@ async function getCurrentUser() {
   // } catch {
   //   return null;
   // }
-
+ 
   return null;
 }
-
+ 
 /**
  * Gọi ở đầu mỗi trang (trừ login.html).
  * - Chưa đăng nhập      -> chuyển về /login.html
@@ -189,7 +231,7 @@ async function getCurrentUser() {
  */
 async function initLayout(requiredRoles) {
   const user = await getCurrentUser();
-
+ 
   if (!user) {
     window.location.href = '/login.html';
     return null;
@@ -199,37 +241,58 @@ async function initLayout(requiredRoles) {
       user.role === 'quanly' ? '/manager/lichlam.html' : '/employee/dashboard.html';
     return null;
   }
-
+ 
   renderSidebar(user.role);
   renderHeader(user.role, user);
   return user;
 }
-
-
+ 
+/**
+ * Đăng xuất: xoá toàn bộ thông tin đăng nhập và quay về trang Login.
+ * TODO Giai đoạn 3: nếu có API, gọi thêm apiFetch('/auth/logout', 'POST')
+ * trước khi clear localStorage (để revoke token phía server).
+ */
+function logout() {
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+ 
+ 
 /* ---------------- 5. MODAL ---------------- */
-
+ 
 function openModal(id) {
   document.getElementById(id)?.classList.add('open');
 }
 function closeModal(id) {
   document.getElementById(id)?.classList.remove('open');
 }
-
-
-/* ---------------- 6. NOTIFICATION DROPDOWN ---------------- */
-
-function toggleNotif() {
-  document.getElementById('notif-dropdown')?.classList.toggle('open');
+ 
+ 
+/* ---------------- 6. DROPDOWN DÙNG CHUNG (chuông thông báo + avatar) ---------------- */
+ 
+/**
+ * Mở/đóng 1 dropdown theo id, tự đóng các dropdown khác đang mở.
+ * Dùng cho cả #notif-dropdown (chuông) và #user-dropdown (avatar).
+ */
+function toggleDropdown(id) {
+  document.querySelectorAll('.notif-dropdown').forEach(dd => {
+    if (dd.id !== id) dd.classList.remove('open');
+  });
+  document.getElementById(id)?.classList.toggle('open');
 }
+ 
+// Đóng dropdown khi bấm ra ngoài
 document.addEventListener('click', e => {
-  const wrap = document.querySelector('.notif-wrap');
-  const dd = document.getElementById('notif-dropdown');
-  if (dd && wrap && !wrap.contains(e.target)) dd.classList.remove('open');
+  document.querySelectorAll('.notif-wrap').forEach(wrap => {
+    if (!wrap.contains(e.target)) {
+      wrap.querySelector('.notif-dropdown')?.classList.remove('open');
+    }
+  });
 });
-
-
+ 
+ 
 /* ---------------- 7. TOAST ---------------- */
-
+ 
 function showToast(msg, type = 'success') {
   let toast = document.getElementById('toast');
   if (!toast) {
@@ -250,10 +313,10 @@ function showToast(msg, type = 'success') {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 }
-
-
+ 
+ 
 /* ---------------- 8. CONFIRM POPUP ---------------- */
-
+ 
 let _confirmCb = null;
 function showConfirm(title, text, cb) {
   document.getElementById('confirm-title').textContent = title;
@@ -265,10 +328,10 @@ function confirmOk() {
   closeModal('confirm-modal');
   if (_confirmCb) { _confirmCb(); _confirmCb = null; }
 }
-
-
+ 
+ 
 /* ---------------- 9. SIDE PANEL (form thêm/sửa dạng trượt) ---------------- */
-
+ 
 function openSidePanel(panelId) {
   document.getElementById(panelId)?.classList.add('open');
   document.getElementById('side-overlay')?.classList.add('open');
@@ -277,12 +340,12 @@ function closeSidePanel(panelId) {
   document.getElementById(panelId)?.classList.remove('open');
   document.getElementById('side-overlay')?.classList.remove('open');
 }
-
-
+ 
+ 
 /* ---------------- 10. WEEK NAVIGATOR (dùng cho đăng ký ca / điều phối) ---------------- */
-
+ 
 const DAYS_VN = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
+ 
 function getWeekDates(offset = 0) {
   const now = new Date();
   const day = now.getDay(); // 0 = CN
@@ -294,14 +357,14 @@ function getWeekDates(offset = 0) {
     return d;
   });
 }
-
+ 
 function fmtDate(d) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-
-
+ 
+ 
 /* ---------------- 11. MOBILE SIDEBAR ---------------- */
-
+ 
 function toggleMobileSidebar() {
   document.querySelector('.sidebar')?.classList.toggle('open');
   document.querySelector('.mobile-overlay')?.classList.toggle('open');
@@ -310,15 +373,15 @@ function closeMobileSidebar() {
   document.querySelector('.sidebar')?.classList.remove('open');
   document.querySelector('.mobile-overlay')?.classList.remove('open');
 }
-
-
+ 
+ 
 /* ===================================================================
    GHI CHÚ server.js (để mọi đường dẫn "/employee/..", "/manager/.."
    trong MENU_CONFIG hoạt động đúng):
-
+ 
      const path = require('path');
      app.use(express.static(path.join(__dirname, '../frontend')));
-
+ 
    -> Cần đưa login.html (và index.html nếu có) vào trong frontend/
       để cùng được phục vụ từ static root này, tránh phải khai báo
       route riêng cho từng file lẻ.
