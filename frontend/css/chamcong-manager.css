@@ -123,6 +123,18 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+.pill-val { 
+  font-size: 24px; 
+  font-weight: 700; 
+  color: var(--ink); 
+  line-height: 1; 
+}
+
+.pill-lbl { 
+  font-size: 12px; 
+  color: var(--ink-muted); 
+}
 .stat-pill.accent .pill-icon { background: var(--accent-light); color: var(--accent); }
 .stat-pill.green  .pill-icon { background: var(--green-bg);     color: var(--green); }
 .stat-pill.amber  .pill-icon { background: var(--amber-bg);     color: var(--amber); }

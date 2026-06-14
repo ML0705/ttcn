@@ -22,13 +22,13 @@ let mockCaLam = [
     maca: 'C03', tenca: 'Ca tối',
     batdau: '17:00', ketthuc: '21:00',
     loai: 'parttime',
-    solichangdung: 2,
+    solichdangdung: 2,
   },
 ];
 
 /* ── State ── */
 let _editingMa  = null;   // null = thêm mới
-let _tkCbCalm   = null;   // local confirm callback (tránh xung đột shared.js)
+
 
 /* ══════════════════════════════════════════
    INIT
@@ -72,13 +72,13 @@ function renderList() {
 function buildCard(ca) {
   const dur     = calcDuration(ca.batdau, ca.ketthuc);
   const loaiChip = loaiToChip(ca.loai);
-  const usage   = ca.solichangdung ?? ca.solichangdung ?? ca.solichangdung;
-  const usageNum = ca.solichangdung ?? ca.solichangdung ?? 0;
+  const usage   = ca.solichdangdung ?? ca.solichdangdung ?? ca.solichdangdung;
+  const usageNum = ca.solichdangdung ?? ca.solichdangdung ?? 0;
 
   // Đếm số lịch đang dùng (mock: lấy từ field)
-  const solich = typeof ca.solichangdung === 'number'
-    ? ca.solichangdung
-    : (typeof ca.solichangdung === 'number' ? ca.solichangdung : 0);
+  const solich = typeof ca.solichdangdung === 'number'
+    ? ca.solichdangdung
+    : (typeof ca.solichdangdung === 'number' ? ca.solichdangdung : 0);
 
   const usageCls  = solich > 0 ? '' : 'empty';
   const usageTxt  = solich > 0
@@ -282,7 +282,7 @@ function saveCalm() {
     // Thêm mới
     const seq  = mockCaLam.length + 1;
     const maca = 'C' + String(seq).padStart(2, '0');
-    mockCaLam.push({ maca, solichangdung: 0, ...data });
+    mockCaLam.push({ maca, solichdangdung: 0, ...data });
     showToast(`Đã tạo ${data.tenca}`, 'success');
     /* TODO: await apiFetch('/api/calm', 'POST', data) */
   }
@@ -299,15 +299,15 @@ function askDelete(maca) {
   const ca = mockCaLam.find(c => c.maca === maca);
   if (!ca) return;
 
-  const hasUsage = (ca.solichangdung ?? 0) > 0;
+  const hasUsage = (ca.solichdangdung ?? 0) > 0;
 
   document.getElementById('confirm-icon').textContent  = hasUsage ? '⚠️' : '🗑️';
   document.getElementById('confirm-title').textContent = `Xóa "${ca.tenca}"?`;
   document.getElementById('confirm-text').textContent  = hasUsage
-    ? `Ca này đang có ${ca.solichangdung} lịch làm liên kết. Xóa sẽ ảnh hưởng đến lịch của nhân viên.`
+    ? `Ca này đang có ${ca.solichdangdung} lịch làm liên kết. Xóa sẽ ảnh hưởng đến lịch của nhân viên.`
     : 'Bạn có chắc muốn xóa ca làm này?';
 
-  _tkCbCalm = () => deleteCalm(maca);
+  _confirmCb = () => deleteCalm(maca);
   openModal('confirm-modal');
 }
 
@@ -319,8 +319,3 @@ function deleteCalm(maca) {
   /* TODO: await apiFetch(`/api/calm/${maca}`, 'DELETE') */
 }
 
-/* Override confirmOk của shared.js */
-function confirmOk() {
-  closeModal('confirm-modal');
-  if (_tkCbCalm) { _tkCbCalm(); _tkCbCalm = null; }
-}

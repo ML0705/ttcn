@@ -43,7 +43,7 @@ const MENU_CONFIG = [
     items: [
       { href: '/manager/chinhanh.html', label: 'Quản lý chi nhánh', icon: '🏬', roles: ['quanly'] },
       { href: '/manager/taikhoan.html', label: 'Quản lý tài khoản', icon: '👥', roles: ['quanly'] },
-      { href: '/manager/calm.html',     label: 'Quản lý ca làm',    icon: '🗓️', roles: ['quanly'] },
+      { href: '/manager/calam.html',     label: 'Quản lý ca làm',    icon: '🗓️', roles: ['quanly'] },
     ],
   },
 ];
@@ -58,7 +58,7 @@ const PAGE_TITLES = {
   '/manager/chamcong.html':   'Quản lý chấm công',
   '/manager/chinhanh.html':   'Quản lý chi nhánh',
   '/manager/taikhoan.html':   'Quản lý tài khoản',
-  '/manager/calm.html':       'Quản lý ca làm',
+  '/manager/calam.html':       'Quản lý ca làm',
 };
  
 const ICON_SVG = {
@@ -127,10 +127,10 @@ function renderHeader(role, user) {
     <div class="header-right">
       <div class="notif-wrap">
         <button class="notif-btn" onclick="toggleDropdown('notif-dropdown')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+         </svg>
   ${notifCount > 0 ? `<span class="notif-badge" id="notif-count">${notifCount}</span>` : ''}
 </button>
         <div class="notif-dropdown" id="notif-dropdown">
@@ -139,7 +139,6 @@ function renderHeader(role, user) {
           <div class="notif-footer">Xem tất cả</div>
         </div>
       </div>
- 
       <!-- Avatar: bấm vào để xem thông tin cá nhân + đăng xuất -->
       <div class="notif-wrap">
         <div class="header-avatar" title="${user?.hoten || ''}" onclick="toggleDropdown('user-dropdown')">${initials}</div>
@@ -154,11 +153,11 @@ function renderHeader(role, user) {
               </div>
             </div>
             <div style="padding: 12px 14px; font-size: 12px; color: var(--ink-soft); line-height: 2;">
-              <div>🆔 Mã NV: <strong>${user?.manhanvien || '--'}</strong></div>
-              <div>📱 SĐT: <strong>${user?.sodienthoai || '--'}</strong></div>
-              <div>✉️ Email: <strong>${user?.email || '--'}</strong></div>
-              <div>🏬 Chi nhánh: <strong>${user?.tenchinhanh || '--'}</strong></div>
-              <div>📁 Loại NV: <strong>${user?.tenloainhanvien || '--'}</strong></div>
+              <div> Mã NV: <strong>${user?.manhanvien || '--'}</strong></div>
+              <div> SĐT: <strong>${user?.sodienthoai || '--'}</strong></div>
+              <div> Email: <strong>${user?.email || '--'}</strong></div>
+              <div> Chi nhánh: <strong>${user?.tenchinhanh || '--'}</strong></div>
+              <div> Loại NV: <strong>${user?.tenloainhanvien || '--'}</strong></div>
             </div>
           </div>
           <div class="notif-footer" style="text-align: left; color: var(--red);" onclick="logout()">🚪 Đăng xuất</div>
@@ -266,10 +265,10 @@ function openModal(id) {
 function closeModal(id) {
   document.getElementById(id)?.classList.remove('open');
 }
- 
- 
-/* ---------------- 6. DROPDOWN DÙNG CHUNG (chuông thông báo + avatar) ---------------- */
- 
+
+
+/* ---------------- 6. NOTIFICATION DROPDOWN ---------------- */
+
 /**
  * Mở/đóng 1 dropdown theo id, tự đóng các dropdown khác đang mở.
  * Dùng cho cả #notif-dropdown (chuông) và #user-dropdown (avatar).
@@ -289,8 +288,11 @@ document.addEventListener('click', e => {
     }
   });
 });
- 
- 
+function logout() {
+  localStorage.clear();
+  window.location.href = '/login.html';
+}
+
 /* ---------------- 7. TOAST ---------------- */
  
 function showToast(msg, type = 'success') {

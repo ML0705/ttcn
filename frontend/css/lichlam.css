@@ -1,0 +1,265 @@
+/* =============================================================
+   lichlam.css — Điều phối lịch làm
+   Import sau main.css
+   ============================================================= */
+
+/* ── Toolbar tuần ── */
+.week-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+.week-nav-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--radius-sm);
+  background: transparent; cursor: pointer;
+  color: var(--ink-soft); transition: background .12s, color .12s;
+}
+.week-nav-btn:hover { background: var(--accent-light); color: var(--accent); }
+.week-label {
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  padding: 0 10px; min-width: 130px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-spacer { flex: 1; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 100px;
+  font-size: 12px; font-weight: 600;
+}
+.status-pill.draft  { background: var(--amber-bg); color: var(--amber); }
+.status-pill.locked { background: var(--accent-light); color: var(--accent); }
+
+/* ── Bảng lưới tuần ── */
+.schedule-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.schedule-table-wrap { overflow-x: auto; }
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 760px;
+}
+.schedule-table th {
+  background: var(--surface-2);
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.schedule-table th:last-child { border-right: none; }
+.schedule-table th .th-day  { font-size: 13px; font-weight: 700; color: var(--ink); }
+.schedule-table th .th-date { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+.schedule-table th.today { background: var(--accent-light); }
+.schedule-table th.today .th-day,
+.schedule-table th.today .th-date { color: var(--accent); }
+
+.shift-label-cell {
+  padding: 14px 14px;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: left;
+  min-width: 130px;
+}
+.shift-label-cell .sl-name { font-weight: 600; font-size: 13px; color: var(--ink); }
+.shift-label-cell .sl-time { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+
+.schedule-table td.sched-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  text-align: center;
+  vertical-align: middle;
+}
+.schedule-table tr:last-child td { border-bottom: none; }
+.schedule-table td:last-child { border-right: none; }
+
+/* Ô lịch — nút điều phối */
+.sched-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--surface);
+  transition: all .12s;
+  font-family: var(--font);
+}
+.sched-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.sched-chip .chip-count {
+  font-size: 15px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.sched-chip .chip-label {
+  font-size: 10px; color: var(--ink-muted);
+}
+
+/* Trạng thái đủ / thiếu / chưa mở ca */
+.sched-chip.status-filled {
+  background: var(--accent-light);
+  border-color: rgba(29,158,117,.25);
+}
+.sched-chip.status-filled .chip-count { color: var(--accent); }
+
+.sched-chip.status-empty {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.sched-chip.status-empty .chip-count { color: var(--ink-muted); }
+.sched-chip.status-empty .chip-label { color: var(--ink-muted); }
+
+.sched-chip.status-closed {
+  background: var(--surface-2);
+  border-color: var(--border);
+  cursor: default;
+  color: var(--ink-muted);
+}
+.sched-chip.status-closed:hover {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+.sched-chip.status-closed .chip-count { color: var(--ink-muted); font-size: 13px; }
+
+/* ── Chú giải ── */
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0;
+}
+.legend-dot.filled { background: var(--accent); }
+.legend-dot.empty  { background: var(--border-strong); }
+
+
+/* =============================================================
+   MODAL ĐIỀU PHỐI NHÂN SỰ
+   ============================================================= */
+
+.dp-modal-info {
+  display: flex;
+  gap: 0;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.dp-modal-info .info-item { display: flex; flex-direction: column; gap: 2px; }
+.dp-modal-info .info-label { font-size: 11px; color: var(--ink-muted); }
+.dp-modal-info .info-val   { font-weight: 600; color: var(--ink); font-size: 13px; }
+
+/* Danh sách NV đã đăng ký */
+.dp-section-title {
+  font-size: 12px; font-weight: 600; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-bottom: 10px; margin-top: 18px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dp-section-title:first-of-type { margin-top: 0; }
+.dp-count-badge {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-light); padding: 2px 8px; border-radius: 100px;
+}
+
+.dp-nv-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 200px; overflow-y: auto;
+}
+.dp-nv-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.dp-nv-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+}
+.dp-nv-info { flex: 1; min-width: 0; }
+.dp-nv-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.dp-nv-meta { font-size: 11px; color: var(--ink-muted); margin-top: 1px; }
+.dp-nv-remove {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; color: var(--ink-muted);
+  flex-shrink: 0; transition: all .12s;
+}
+.dp-nv-remove:hover { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+
+.dp-empty-list {
+  text-align: center; padding: 18px;
+  color: var(--ink-muted); font-size: 12px;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm);
+}
+
+/* Thêm nhân viên */
+.dp-add-row {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.dp-add-row select {
+  flex: 1;
+  padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px;
+  font-family: var(--font); color: var(--ink); background: var(--surface);
+}
+.dp-add-row select:focus { outline: none; border-color: var(--accent); }
+.dp-add-row .btn { flex-shrink: 0; }
+
+/* =============================================================
+   RESPONSIVE
+   ============================================================= */
+@media (max-width: 768px) {
+  .week-toolbar { gap: 8px; }
+  .week-label { min-width: unset; font-size: 12px; }
+  .status-pill { font-size: 11px; padding: 5px 10px; }
+  .legend-row { gap: 10px; padding: 10px 14px; }
+}
