@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Lịch sử chấm công</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+
+  <!-- Lớp phủ khi mở sidebar trên mobile -->
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+
+    <!-- Sidebar được renderSidebar() đổ vào đây -->
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+
+      <!-- Header được renderHeader() đổ vào đây -->
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+
+        <!-- ====================================================
+             1) BỘ LỌC THÁNG + CA LÀM
+        ==================================================== -->
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">‹</button>
+            <span class="fw-600" id="month-label">Tháng --/----</span>
+            <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="page-bar-right">
+            <select class="form-control" style="width: auto;" id="shift-filter" onchange="histPage = 0; renderHistory();">
+              <option value="">Tất cả ca</option>
+              <option value="Ca sáng">Ca sáng</option>
+              <option value="Ca chiều">Ca chiều</option>
+              <option value="Ca tối">Ca tối</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ====================================================
+             2) THỐNG KÊ TỔNG HỢP THEO THÁNG
+        ==================================================== -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Ngày đi làm</div>
+            <div class="stat-value" id="hs-worked">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ngày vắng</div>
+            <div class="stat-value" id="hs-absent">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ngày muộn</div>
+            <div class="stat-value" id="hs-late">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tổng giờ</div>
+            <div class="stat-value" id="hs-total-hours">--</div>
+          </div>
+        </div>
+
+        <!-- ====================================================
+             3) BẢNG LỊCH SỬ CHẤM CÔNG
+        ==================================================== -->
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Ngày</th>
+                  <th>Ca làm</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Tổng giờ</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="hist-pagination"></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
+  <div class="side-overlay" id="side-overlay"></div>
+
+  <script src="../js/shared.js"></script>
+  <!-- <script src="../js/utils.js"></script> -->
+  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi có API, thay histData mock
+       trong loadHistory() bằng apiFetch('/lichsu/...') theo curMonth -->
+  <script>
+    initLayout(['nhanvien']).then(user => {
+      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+
+      initHistoryPage();
+    });
+
+    /* ===================================================================
+       DỮ LIỆU LỊCH SỬ CHẤM CÔNG (MOCK)
+       - curMonth: 0-indexed (4 = Tháng 05)
+       - Khi có API thật: gọi lại loadHistory() mỗi khi đổi tháng/năm
+    =================================================================== */
+    let curMonth = new Date().getMonth();
+    let curYear  = new Date().getFullYear();
+    let histPage = 0;
+    const PER_PAGE = 6;
+
+    const histData = [
+      { date: '12/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:02', total: '4h 4p', status: 'Hoàn thành' },
+      { date: '11/05/2025', shift: 'Ca chiều', ci: '13:00', co: '17:00', total: '4h', status: 'Hoàn thành' },
+      { date: '10/05/2025', shift: 'Ca tối', ci: '18:02', co: '22:00', total: '3h 58p', status: 'Về sớm' },
+      { date: '09/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
+      { date: '08/05/2025', shift: 'Ca chiều', ci: '08:01', co: '12:05', total: '4h 4p', status: 'Muộn giờ' },
+      { date: '07/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
+      { date: '06/05/2025', shift: 'Ca tối', ci: '18:00', co: '22:00', total: '4h', status: 'Hoàn thành' },
+      { date: '05/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
+    ];
+
+    function initHistoryPage() {
+      updateMonthLabel();
+      renderSummary();
+      renderHistory();
+    }
+
+    /* ===== Điều hướng tháng ===== */
+    function changeMonth(delta) {
+      curMonth += delta;
+      if (curMonth > 11) { curMonth = 0; curYear++; }
+      if (curMonth < 0)  { curMonth = 11; curYear--; }
+      histPage = 0;
+      updateMonthLabel();
+      renderSummary();
+      renderHistory();
+      // TODO Giai đoạn 3: loadHistory(curMonth, curYear) để lấy dữ liệu từ API
+    }
+
+    function updateMonthLabel() {
+      document.getElementById('month-label').textContent =
+        `Tháng ${String(curMonth + 1).padStart(2, '0')}/${curYear}`;
+    }
+
+    /* ===== Thống kê tổng hợp tháng (mock) ===== */
+    function renderSummary() {
+      document.getElementById('hs-worked').textContent      = '20';
+      document.getElementById('hs-absent').textContent      = '1';
+      document.getElementById('hs-late').textContent        = '2';
+      document.getElementById('hs-total-hours').textContent = '176h';
+    }
+
+    /* ===== Badge trạng thái ===== */
+    function statusBadge(s) {
+      const map = { 'Hoàn': 'badge-green', 'Về': 'badge-amber', 'Muộn': 'badge-red', 'Vắng': 'badge-red' };
+      const key = Object.keys(map).find(k => s.startsWith(k));
+      return `<span class="badge ${map[key] || 'badge-gray'}">${s}</span>`;
+    }
+
+    /* ===== Render bảng lịch sử (có lọc theo ca + phân trang) ===== */
+    function renderHistory() {
+      const filterShift = document.getElementById('shift-filter').value;
+      const filtered = filterShift ? histData.filter(r => r.shift === filterShift) : histData;
+
+      const rows = filtered.slice(histPage * PER_PAGE, histPage * PER_PAGE + PER_PAGE);
+
+      document.getElementById('history-body').innerHTML = rows.length
+        ? rows.map((r, i) => `
+            <tr>
+              <td>${histPage * PER_PAGE + i + 1}</td>
+              <td>${r.date}</td>
+              <td>${r.shift}</td>
+              <td>${r.ci}</td>
+              <td>${r.co}</td>
+              <td>${r.total}</td>
+              <td>${statusBadge(r.status)}</td>
+            </tr>`).join('')
+        : `<tr><td colspan="7" style="text-align:center;color:var(--ink-muted);padding:20px">Không có dữ liệu</td></tr>`;
+
+      const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+      document.getElementById('hist-pagination').innerHTML =
+        Array.from({ length: pages }, (_, i) =>
+          `<div class="page-btn ${i === histPage ? 'active' : ''}" onclick="histPage=${i};renderHistory()">${i + 1}</div>`
+        ).join('') +
+        `<span class="page-info" style="margin-left: 8px;">Hiển thị ${rows.length} / ${filtered.length} bản ghi</span>`;
+    }
+  </script>
+</body>
+</html>
