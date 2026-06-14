@@ -78,6 +78,7 @@ GO
 CREATE TABLE dbo._Seq_Chi_nhanh (id INT IDENTITY(1,1) PRIMARY KEY);
 GO
 
+-- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 CREATE TRIGGER dbo.trg_Chi_nhanh_SinhMa
 ON dbo.Chi_nhanh
 INSTEAD OF INSERT
@@ -139,7 +140,7 @@ GO
 -- Ví dụ: Quản lý, Nhân viên bán hàng, Thu ngân, ...
 -- ============================================================
 CREATE TABLE dbo.Chuc_vu (
-    machucvu    VARCHAR(10)     NOT NULL,   -- [SỬA v3] CHAR(10) → VARCHAR(10), tránh padding silent
+    machucvu    CHAR(10)        NOT NULL,
     tenchucvu   NVARCHAR(50)    NOT NULL,
 
     CONSTRAINT PK_Chuc_vu       PRIMARY KEY (machucvu),
@@ -155,7 +156,7 @@ CREATE TABLE dbo.Nhan_vien (
     manhanvien      VARCHAR(10)     NOT NULL,
     machinhanh      VARCHAR(10)     NOT NULL,
     maloainhanvien  VARCHAR(10)     NOT NULL,
-    machucvu        VARCHAR(10)     NOT NULL,   -- [SỬA v3] CHAR(10) → VARCHAR(10)
+    machucvu        CHAR(10)        NOT NULL,
     hoten           NVARCHAR(50)    NOT NULL,
     email           VARCHAR(50)     NULL,
     sodienthoai     CHAR(10)        NOT NULL,
@@ -215,7 +216,7 @@ BEGIN
     DECLARE
         @machinhanh     VARCHAR(10),
         @maloainhanvien VARCHAR(10),
-        @machucvu       VARCHAR(10),
+        @machucvu       CHAR(10),
         @hoten          NVARCHAR(50),
         @email          VARCHAR(50),
         @sdt            CHAR(10),
@@ -243,6 +244,7 @@ BEGIN
 
         SET @newMa = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
 
+        -- INSERT nhân viên
         INSERT INTO dbo.Nhan_vien
             (manhanvien, machinhanh, maloainhanvien, machucvu, hoten, email, sodienthoai)
         VALUES
@@ -284,9 +286,10 @@ GO
 -- ============================================================
 -- 6. CA LÀM
 -- Mã tự sinh: C01, C02, ...
+-- FIX v3: dùng cursor để hỗ trợ batch INSERT nhiều dòng
 -- ============================================================
 CREATE TABLE dbo.Ca_lam (
-    maca    VARCHAR(10)     NOT NULL,   -- [SỬA v3] CHAR(10) → VARCHAR(10)
+    maca    CHAR(10)        NOT NULL,
     tenca   NVARCHAR(50)    NOT NULL,
     batdau  TIME            NOT NULL,
     ketthuc TIME            NOT NULL,
@@ -315,7 +318,7 @@ BEGIN
         @batdau  TIME,
         @ketthuc TIME,
         @seq     INT,
-        @newMa   VARCHAR(10);
+        @newMa   CHAR(10);
 
     OPEN @cur;
     FETCH NEXT FROM @cur INTO @tenca, @batdau, @ketthuc;
@@ -343,7 +346,7 @@ GO
 -- ============================================================
 CREATE TABLE dbo.Lich_lam (
     malichlam       VARCHAR(20)     NOT NULL,
-    maca            VARCHAR(10)     NOT NULL,   -- [SỬA v3] CHAR(10) → VARCHAR(10)
+    maca            CHAR(10)        NOT NULL,
     ngay            DATE            NOT NULL,
     thoigianbatdau  TIME            NOT NULL,
     thoigianketthuc TIME            NOT NULL,
@@ -428,7 +431,7 @@ GO
 CREATE PROCEDURE dbo.SP_TaoNhanVien
     @machinhanh         VARCHAR(10),
     @maloainhanvien     VARCHAR(10),    -- 'LNV01' = Fulltime | 'LNV02' = Parttime
-    @machucvu           VARCHAR(10),    -- Chức vụ (combobox trong form UI)
+    @machucvu           CHAR(10),       -- Chức vụ (combobox trong form UI)
     @hoten              NVARCHAR(50),
     @email              VARCHAR(50)     = NULL,
     @sodienthoai        CHAR(10),
@@ -477,7 +480,7 @@ CREATE PROCEDURE dbo.SP_CapNhatNhanVien
     @manhanvien         VARCHAR(10),
     @machinhanh         VARCHAR(10),
     @maloainhanvien     VARCHAR(10),
-    @machucvu           VARCHAR(10),
+    @machucvu           CHAR(10),
     @hoten              NVARCHAR(50),
     @email              VARCHAR(50)     = NULL,
     @sodienthoai        CHAR(10),
@@ -574,7 +577,11 @@ BEGIN
     SET NOCOUNT ON;
 
     BEGIN TRY
-        IF NOT EXISTS (SELECT 1 FROM dbo.Tai_khoan WHERE manhanvien = @manhanvien)
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM dbo.Tai_khoan 
+            WHERE manhanvien = @manhanvien
+        )
         BEGIN
             RAISERROR(N'Tài khoản không tồn tại.', 16, 1);
             RETURN;
@@ -582,18 +589,25 @@ BEGIN
 
         UPDATE dbo.Tai_khoan
         SET matkhau          = @matkhauMoi,
-            solansaidangnhap = 0
+            solansaidangnhap = 0,
+            trangthaikhoa    = 0
         WHERE manhanvien = @manhanvien;
 
     END TRY
     BEGIN CATCH
+
         DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
-        RAISERROR(N'Lỗi đổi mật khẩu: %s', 16, 1, @ErrMsg);
+
+        RAISERROR(
+            N'Lỗi đổi mật khẩu: %s',
+            16,
+            1,
+            @ErrMsg
+        );
+
     END CATCH
 END;
-GO
-
--- ============================================================
+GO-- ============================================================
 -- DỮ LIỆU MẪU
 -- ============================================================
 
@@ -604,9 +618,9 @@ INSERT INTO dbo.Loai_nhan_vien (maloainhanvien, tenloainhanvien) VALUES
 
 -- Chức vụ (combobox "Chức vụ" trong form Thêm/Sửa tài khoản)
 INSERT INTO dbo.Chuc_vu (machucvu, tenchucvu) VALUES
-    ('CV01', N'Quản lý'),
-    ('CV02', N'Nhân viên'),
-    ('CV03', N'Thu ngân');
+    ('CV01      ', N'Quản lý'),
+    ('CV02      ', N'Nhân viên'),
+    ('CV03      ', N'Thu ngân');
 
 -- Chi nhánh (trigger sinh CN01, CN02)
 INSERT INTO dbo.Chi_nhanh (tenchinhanh, diachi, sdtcn, giomocua, giodongcua)
@@ -626,7 +640,7 @@ DECLARE @ma1 VARCHAR(10), @ma2 VARCHAR(10);
 EXEC dbo.SP_TaoNhanVien
     @machinhanh         = 'CN01',
     @maloainhanvien     = 'LNV01',
-    @machucvu           = 'CV01',
+    @machucvu           = 'CV01      ',
     @hoten              = N'Nguyễn Văn An',
     @email              = 'an.nguyen@hygge.vn',
     @sodienthoai        = '0901111111',
@@ -636,7 +650,7 @@ EXEC dbo.SP_TaoNhanVien
 EXEC dbo.SP_TaoNhanVien
     @machinhanh         = 'CN01',
     @maloainhanvien     = 'LNV02',
-    @machucvu           = 'CV02',
+    @machucvu           = 'CV02      ',
     @hoten              = N'Trần Thị Bình',
     @email              = 'binh.tran@hygge.vn',
     @sodienthoai        = '0902222222',
@@ -648,8 +662,8 @@ PRINT N'Mã NV 2: ' + @ma2;   -- NVP0001
 
 -- Lịch làm
 INSERT INTO dbo.Lich_lam (maca, ngay) VALUES
-    ('C01', '2025-06-16'),
-    ('C02', '2025-06-16');
+    ('C01      ', '2025-06-16'),
+    ('C02      ', '2025-06-16');
 
 -- Đăng ký lịch làm
 INSERT INTO dbo.Dang_ky_lich_lam (manhanvien, malichlam) VALUES

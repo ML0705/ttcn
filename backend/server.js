@@ -12,11 +12,11 @@ require('./config/db');
 
 // ── Routes (thêm dần từng cái khi đã tạo file) ──
 app.use('/api/auth',     require('./routes/auth'));
-// app.use('/api/lichlam',  require('./routes/lichlam'));   // mở sau
-// app.use('/api/chamcong', require('./routes/chamcong'));  // mở sau
-// app.use('/api/taikhoan', require('./routes/taikhoan')); // mở sau
-// app.use('/api/chinhanh', require('./routes/chinhanh')); // mở sau
-// app.use('/api/calm',     require('./routes/calm'));      // mở sau
+app.use('/api/lichlam',  require('./routes/lichlam'));   // mở sau
+app.use('/api/chamcong', require('./routes/chamcong'));  // mở sau
+app.use('/api/taikhoan', require('./routes/taikhoan')); // mở sau
+app.use('/api/chinhanh', require('./routes/chinhanh')); // mở sau
+app.use('/api/calam',     require('./routes/calam'));      // mở sau
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

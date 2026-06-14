@@ -10,7 +10,6 @@ module.exports = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // decoded sẽ có: { manhanvien, vaiTro, machinhanh }
     req.user = decoded;
     next();
   } catch {

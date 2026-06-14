@@ -1,12 +1,7 @@
 ﻿-- ============================================================
--- HYGGE — DỮ LIỆU MẪU (seed_v3.sql)
+-- HYGGE — DỮ LIỆU MẪU (seed.sql)
 -- Khớp với schema_v3.sql (cascade delete + SP mới)
--- Lưu ý:
---   · Không INSERT vào Tai_khoan trực tiếp —
---     trigger trg_Nhan_vien_SinhMa tự tạo dòng Tai_khoan
---   · Dùng SP_TaoNhanVien để tạo NV với mật khẩu tùy chỉnh
---   · Dùng SP_CapNhatNhanVien để sửa thông tin NV (UC 2.2)
---   · Dùng SP_XoaNhanVien để xóa NV, cascade tự dọn dữ liệu liên quan (UC 2.3)
+-- Mật khẩu tất cả tài khoản: Hygge@2025 (hash bcrypt THẬT, đã verify)
 -- ============================================================
 
 -- ============================================================
@@ -49,7 +44,6 @@ GO
 
 -- ============================================================
 -- 2. LOẠI NHÂN VIÊN + CHỨC VỤ
--- Chức vụ hiển thị dạng combobox trong form Thêm/Sửa tài khoản
 -- ============================================================
 INSERT INTO dbo.Loai_nhan_vien (maloainhanvien, tenloainhanvien)
 VALUES ('LNV01', N'Fulltime'), ('LNV02', N'Parttime');
@@ -59,7 +53,8 @@ VALUES ('CV01', N'Quản lý'), ('CV02', N'Nhân viên bán hàng');
 GO
 
 -- ============================================================
--- 3. NHÂN VIÊN — dùng SP_TaoNhanVien (hash bcrypt = Hygge@2025)
+-- 3. NHÂN VIÊN — dùng SP_TaoNhanVien
+-- Mật khẩu: Hygge@2025 (hash bcrypt THẬT $2b$12$..., đã verify true)
 -- ============================================================
 DECLARE
     @maNV1 VARCHAR(10), @maNV2 VARCHAR(10), @maNV3 VARCHAR(10),
@@ -181,7 +176,7 @@ FROM dbo.Nhan_vien nv
 CROSS JOIN dbo.Lich_lam ll
 INNER JOIN dbo.Ca_lam cl ON cl.maca = ll.maca
 WHERE nv.sodienthoai = '0901111111'
-  AND ll.ngay IN ('2025-06-16','2025-06-17','2025-06-18','2025-06-19','2025-06-20')
+  AND ll.ngay IN ('2025-06-16', '2025-06-17', '2025-06-18', '2025-06-19', '2025-06-20')
   AND cl.tenca = N'Ca sáng';
 GO
 
@@ -253,26 +248,6 @@ VALUES (
 GO
 
 -- ============================================================
--- DEMO SP_CapNhatNhanVien (UC 2.2) — chạy thử, không ảnh hưởng data chính
--- ============================================================
--- Ví dụ: đổi chức vụ Trần Văn An sang Quản lý, giữ nguyên mật khẩu
--- EXEC dbo.SP_CapNhatNhanVien
---     @manhanvien     = 'NVP0002',   -- mã sinh ra sau seed
---     @machinhanh     = 'CN01',
---     @maloainhanvien = 'LNV02',
---     @machucvu       = 'CV01',
---     @hoten          = N'Trần Văn An',
---     @email          = 'tranan@hygge.vn',
---     @sodienthoai    = '0903333333',
---     @matkhauMoi     = NULL;        -- NULL = giữ nguyên mật khẩu cũ
-
--- ============================================================
--- DEMO SP_XoaNhanVien (UC 2.3) — chạy thử, không ảnh hưởng data chính
--- Cascade tự xóa: Tai_khoan, Dang_ky_lich_lam, Cham_cong của NV đó
--- ============================================================
--- EXEC dbo.SP_XoaNhanVien @manhanvien = 'NVP0003';
-
--- ============================================================
 -- KIỂM TRA
 -- ============================================================
 SELECT 'Chi_nhanh'  AS [Bang], machinhanh AS [Ma] FROM dbo.Chi_nhanh
@@ -289,9 +264,5 @@ SELECT COUNT(*) AS [Dang_ky_lich]   FROM dbo.Dang_ky_lich_lam;
 SELECT COUNT(*) AS [Cham_cong]      FROM dbo.Cham_cong;
 GO
 
-PRINT N'✅ Hoàn thành seed_v3 — không lỗi';
+PRINT N'✅ Hoàn thành seed — không lỗi';
 GO
-USE HyggeDB;
-SELECT tendangnhap, matkhau, LEN(matkhau) AS do_dai
-FROM dbo.Tai_khoan
-WHERE tendangnhap = '0901111111';

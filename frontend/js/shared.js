@@ -1,7 +1,6 @@
-
 /* ===================================================================
    HYGGE – shared.js (dùng chung cho mọi trang frontend)
- 
+
    GHI CHÚ KIẾN TRÚC
    - Dự án dùng nhiều trang HTML riêng (MPA), KHÔNG phải SPA.
    - Hàm navigate() kiểu cũ (ẩn/hiện .page-view trong 1 trang) đã bị
@@ -10,17 +9,70 @@
    - File này chỉ còn nhiệm vụ:
        1) Dựng sidebar + header dùng chung từ MENU_CONFIG
        2) Kiểm tra đăng nhập / phân quyền trước khi hiển thị trang
-       3) Các helper UI dùng chung: modal, toast, confirm, side panel,
+       3) Gọi API có gắn token (apiFetch)
+       4) Các helper UI dùng chung: modal, toast, confirm, side panel,
           week navigator, mobile sidebar
    - GIẢ ĐỊNH: server Node.js phục vụ thư mục frontend/ làm static
-     root (xem ghi chú server.js ở cuối file). Nhờ đó các đường dẫn
-     "/employee/..." hay "/manager/..." trong MENU_CONFIG luôn đúng,
-     bất kể trang hiện tại đang nằm ở thư mục nào.
+     root (xem ghi chú server.js ở cuối file).
 =================================================================== */
- 
- 
+
+
+/* ---------------- 0. API BASE + apiFetch ---------------- */
+
+const API_BASE = 'http://localhost:3000/api';
+
+/**
+ * Gọi API backend có gắn sẵn token (Authorization: Bearer ...).
+ *
+ * @param {string} path   ví dụ '/calm', '/lichlam/tuan?start=2026-06-15'
+ * @param {string} method 'GET' | 'POST' | 'PUT' | 'DELETE' (default 'GET')
+ * @param {object} body   object sẽ JSON.stringify (bỏ qua nếu GET/DELETE không có body)
+ * @returns {Promise<any>} dữ liệu JSON trả về từ server
+ * @throws {Error} nếu response không ok — error.message = message từ server (hoặc text mặc định)
+ *                  error.status = HTTP status code
+ *                  Riêng 401 (token hết hạn) -> tự logout + chuyển về /login.html
+ */
+async function apiFetch(path, method = 'GET', body = null) {
+  const token = localStorage.getItem('token');
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    throw new Error('Không thể kết nối server');
+  }
+
+  // Token hết hạn / không hợp lệ -> đăng xuất luôn
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = '/login.html';
+    throw new Error('Phiên đăng nhập đã hết hạn');
+  }
+
+  // Không có nội dung trả về (ví dụ DELETE 204)
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!res.ok) {
+    const err = new Error(data?.message || 'Có lỗi xảy ra');
+    err.status = res.status;
+    err.data   = data;
+    throw err;
+  }
+
+  return data;
+}
+
+
 /* ---------------- 1. CẤU HÌNH MENU DÙNG CHUNG CHO 2 ROLE ---------------- */
- 
+
 const MENU_CONFIG = [
   {
     group: 'Cá nhân',
@@ -47,7 +99,7 @@ const MENU_CONFIG = [
     ],
   },
 ];
- 
+
 /* Tiêu đề header tương ứng từng trang (key = pathname) */
 const PAGE_TITLES = {
   '/employee/dashboard.html': 'Dashboard cá nhân',
@@ -60,7 +112,7 @@ const PAGE_TITLES = {
   '/manager/taikhoan.html':   'Quản lý tài khoản',
   '/manager/calam.html':       'Quản lý ca làm',
 };
- 
+
 const ICON_SVG = {
   '📊': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
   '📅': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
@@ -71,13 +123,14 @@ const ICON_SVG = {
   '🏬': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 9l1-5h16l1 5"/><path d="M3 9v10h18V9"/><path d="M9 21v-6h6v6"/></svg>`,
   '👥': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>`,
   '🗓️': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
-}; 
+};
+
 /* ---------------- 2. DỰNG SIDEBAR ---------------- */
- 
+
 function renderSidebar(role) {
   const root = document.getElementById('sidebar-root');
   if (!root) return;
- 
+
   const currentPath = window.location.pathname;
   let html = `
     <div class="sidebar-logo">
@@ -85,11 +138,11 @@ function renderSidebar(role) {
       <div class="sub" id="role-badge"></div>
     </div>
     <nav class="sidebar-menu">`;
- 
+
   MENU_CONFIG.forEach(group => {
     const items = group.items.filter(i => i.roles.includes(role));
     if (items.length === 0) return; // ẩn cả nhóm nếu role không có quyền nào trong nhóm
- 
+
     html += `<div class="sidebar-section-label">${group.group}</div>`;
     items.forEach(item => {
       const active = currentPath === item.href ? ' active' : '';
@@ -100,18 +153,18 @@ function renderSidebar(role) {
         </a>`;
     });
   });
- 
+
   html += `</nav>`;
   root.innerHTML = html;
 }
- 
- 
+
+
 /* ---------------- 3. DỰNG HEADER (tiêu đề trang + chuông + avatar) ---------------- */
- 
+
 function renderHeader(role, user) {
   const root = document.getElementById('header-root');
   if (!root) return;
- 
+
   const title = PAGE_TITLES[window.location.pathname] || '';
   const initials = (user?.hoten || 'NV')
     .split(' ')
@@ -119,7 +172,7 @@ function renderHeader(role, user) {
     .slice(-2)
     .join('')
     .toUpperCase();
- 
+
   const notifCount = 0; // TODO: thay bằng số thông báo chưa đọc thật
   root.innerHTML = `
     <button class="header-menu-btn" onclick="toggleMobileSidebar()">☰</button>
@@ -164,7 +217,7 @@ function renderHeader(role, user) {
         </div>
       </div>
     </div>`;
- 
+
   const badge = document.getElementById('role-badge');
   if (badge) {
     badge.textContent =
@@ -172,54 +225,33 @@ function renderHeader(role, user) {
       (user?.tenchinhanh ? ' · ' + user.tenchinhanh : '');
   }
 }
- 
- 
+
+
 /* ---------------- 4. ĐĂNG NHẬP / PHÂN QUYỀN ----------------
-   Đây là điểm tích hợp API auth (Giai đoạn 3, bước 1).
-   - Hiện tại: dùng "mockUser" trong localStorage để dựng & test
-     sidebar/giao diện khi backend chưa xong.
-   - Khi backend xong: xoá nhánh mockUser, bật đoạn fetch thật.
- 
-   GHI CHÚ MAP DỮ LIỆU (theo schema_v3.sql / seed_v3.sql):
-   - Đối tượng user (mockUser hoặc /api/auth/me) nên có đủ các field
-     sau để renderHeader() ở trên hiển thị "đầy đủ thông tin":
-       manhanvien      <- Nhan_vien.manhanvien   (vd: NVP0001)
-       hoten           <- Nhan_vien.hoten
-       email           <- Nhan_vien.email
-       sodienthoai     <- Nhan_vien.sodienthoai  (= Tai_khoan.tendangnhap)
-       role            <- 'nhanvien' | 'quanly'  (suy ra từ Chuc_vu.tenchucvu,
-                          'Quản lý' => 'quanly', còn lại => 'nhanvien')
-       tenchucvu       <- Chuc_vu.tenchucvu      (JOIN theo Nhan_vien.machucvu)
-       tenloainhanvien <- Loai_nhan_vien.tenloainhanvien (JOIN theo maloainhanvien)
-       machinhanh      <- Nhan_vien.machinhanh
-       tenchinhanh     <- Chi_nhanh.tenchinhanh  (JOIN theo machinhanh)
-   - Khi có API thật, /api/auth/me nên trả về 1 JOIN của 4 bảng:
-     Nhan_vien x Chi_nhanh x Chuc_vu x Loai_nhan_vien (theo manhanvien
-     lấy từ token đăng nhập).
+   - login.html lưu vào localStorage: token, vaiTro ('manager'|'employee'),
+     hoten, machinhanh, manhanvien (xem login.html).
+   - getCurrentUser() gọi GET /api/auth/me (gắn token) để lấy đầy đủ
+     thông tin (email, sodienthoai, tenchinhanh, tenloainhanvien...)
+     và field "role" ('quanly'|'nhanvien') dùng cho MENU_CONFIG.
 ------------------------------------------------------------- */
- 
+
 async function getCurrentUser() {
   const token = localStorage.getItem('token');
   if (!token) return null;
- 
-  /* --- TẠM THỜI (chưa có API /api/auth/me) --- */
-  const mock = localStorage.getItem('mockUser');
-  if (mock) return JSON.parse(mock);
- 
-  /* --- KHI BACKEND XONG: bỏ comment đoạn dưới, xoá đoạn mock trên --- */
-  // try {
-  //   const res = await fetch('/api/auth/me', {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   });
-  //   if (!res.ok) return null;
-  //   return await res.json();
-  // } catch {
-  //   return null;
-  // }
- 
-  return null;
+
+  try {
+    const user = await apiFetch('/auth/me');
+    // user = { manhanvien, hoten, email, sodienthoai, machinhanh,
+    //          tenchinhanh, maloainhanvien, tenloainhanvien,
+    //          tenchucvu, vaiTro, role }
+    return user;
+  } catch (err) {
+    // Token hết hạn -> apiFetch đã tự logout + redirect, không cần làm thêm
+    // Lỗi khác (server lỗi, mất mạng) -> coi như chưa đăng nhập
+    return null;
+  }
 }
- 
+
 /**
  * Gọi ở đầu mỗi trang (trừ login.html).
  * - Chưa đăng nhập      -> chuyển về /login.html
@@ -230,7 +262,7 @@ async function getCurrentUser() {
  */
 async function initLayout(requiredRoles) {
   const user = await getCurrentUser();
- 
+
   if (!user) {
     window.location.href = '/login.html';
     return null;
@@ -240,25 +272,15 @@ async function initLayout(requiredRoles) {
       user.role === 'quanly' ? '/manager/lichlam.html' : '/employee/dashboard.html';
     return null;
   }
- 
+
   renderSidebar(user.role);
   renderHeader(user.role, user);
   return user;
 }
- 
-/**
- * Đăng xuất: xoá toàn bộ thông tin đăng nhập và quay về trang Login.
- * TODO Giai đoạn 3: nếu có API, gọi thêm apiFetch('/auth/logout', 'POST')
- * trước khi clear localStorage (để revoke token phía server).
- */
-function logout() {
-  localStorage.clear();
-  window.location.href = '/login.html';
-}
- 
- 
+
+
 /* ---------------- 5. MODAL ---------------- */
- 
+
 function openModal(id) {
   document.getElementById(id)?.classList.add('open');
 }
@@ -279,7 +301,7 @@ function toggleDropdown(id) {
   });
   document.getElementById(id)?.classList.toggle('open');
 }
- 
+
 // Đóng dropdown khi bấm ra ngoài
 document.addEventListener('click', e => {
   document.querySelectorAll('.notif-wrap').forEach(wrap => {
@@ -294,7 +316,7 @@ function logout() {
 }
 
 /* ---------------- 7. TOAST ---------------- */
- 
+
 function showToast(msg, type = 'success') {
   let toast = document.getElementById('toast');
   if (!toast) {
@@ -315,10 +337,10 @@ function showToast(msg, type = 'success') {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 }
- 
- 
+
+
 /* ---------------- 8. CONFIRM POPUP ---------------- */
- 
+
 let _confirmCb = null;
 function showConfirm(title, text, cb) {
   document.getElementById('confirm-title').textContent = title;
@@ -330,10 +352,10 @@ function confirmOk() {
   closeModal('confirm-modal');
   if (_confirmCb) { _confirmCb(); _confirmCb = null; }
 }
- 
- 
+
+
 /* ---------------- 9. SIDE PANEL (form thêm/sửa dạng trượt) ---------------- */
- 
+
 function openSidePanel(panelId) {
   document.getElementById(panelId)?.classList.add('open');
   document.getElementById('side-overlay')?.classList.add('open');
@@ -342,12 +364,12 @@ function closeSidePanel(panelId) {
   document.getElementById(panelId)?.classList.remove('open');
   document.getElementById('side-overlay')?.classList.remove('open');
 }
- 
- 
+
+
 /* ---------------- 10. WEEK NAVIGATOR (dùng cho đăng ký ca / điều phối) ---------------- */
- 
+
 const DAYS_VN = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
- 
+
 function getWeekDates(offset = 0) {
   const now = new Date();
   const day = now.getDay(); // 0 = CN
@@ -359,14 +381,14 @@ function getWeekDates(offset = 0) {
     return d;
   });
 }
- 
+
 function fmtDate(d) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
- 
- 
+
+
 /* ---------------- 11. MOBILE SIDEBAR ---------------- */
- 
+
 function toggleMobileSidebar() {
   document.querySelector('.sidebar')?.classList.toggle('open');
   document.querySelector('.mobile-overlay')?.classList.toggle('open');
@@ -375,15 +397,15 @@ function closeMobileSidebar() {
   document.querySelector('.sidebar')?.classList.remove('open');
   document.querySelector('.mobile-overlay')?.classList.remove('open');
 }
- 
- 
+
+
 /* ===================================================================
    GHI CHÚ server.js (để mọi đường dẫn "/employee/..", "/manager/.."
    trong MENU_CONFIG hoạt động đúng):
- 
+
      const path = require('path');
      app.use(express.static(path.join(__dirname, '../frontend')));
- 
+
    -> Cần đưa login.html (và index.html nếu có) vào trong frontend/
       để cùng được phục vụ từ static root này, tránh phải khai báo
       route riêng cho từng file lẻ.
