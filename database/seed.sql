@@ -266,3 +266,4 @@ GO
 
 PRINT N'✅ Hoàn thành seed — không lỗi';
 GO
+select * from Nhan_vien

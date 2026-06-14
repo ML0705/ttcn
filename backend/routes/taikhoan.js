@@ -21,7 +21,7 @@ router.get('/', auth, chiManager, async (req, res) => {
     await poolConnect;
 
     const result = await pool.request()
-      .input('machinhanh', sql.VarChar, req.user.machinhanh)
+      .input('machinhanh', sql.VarChar(10), req.user.machinhanh)
       .query(`
         SELECT
           nv.manhanvien,
@@ -55,6 +55,7 @@ router.get('/', auth, chiManager, async (req, res) => {
 // POST /api/taikhoan — Thêm nhân viên mới
 // Gọi SP_TaoNhanVien, backend hash mật khẩu trước
 // Body: { hoten, sodienthoai, email, matkhau, machinhanh, machucvu, maloainhanvien }
+// machucvu: 'CV01'|'CV02'|'CV03'  |  maloainhanvien: 'LNV01'|'LNV02'
 // ═══════════════════════════════════════════════════
 router.post('/', auth, chiManager, async (req, res) => {
   const {
@@ -73,13 +74,13 @@ router.post('/', auth, chiManager, async (req, res) => {
     await poolConnect;
 
     const result = await pool.request()
-      .input('machinhanh',      sql.VarChar,  machinhanh)
-      .input('maloainhanvien',  sql.VarChar,  maloainhanvien)
-      .input('machucvu',        sql.Char,     machucvu)
-      .input('hoten',           sql.NVarChar, hoten)
-      .input('email',           sql.VarChar,  email || null)
-      .input('sodienthoai',     sql.Char,     sodienthoai)
-      .input('matkhau',         sql.VarChar,  hash)
+      .input('machinhanh',      sql.VarChar(10), machinhanh)
+      .input('maloainhanvien',  sql.VarChar(10), maloainhanvien)
+      .input('machucvu',        sql.VarChar(10), machucvu)        // [FIX] Char -> VarChar(10)
+      .input('hoten',           sql.NVarChar(50), hoten)
+      .input('email',           sql.VarChar(50), email || null)
+      .input('sodienthoai',     sql.Char(10),    sodienthoai)
+      .input('matkhau',         sql.VarChar(255), hash)
       .output('manhanvien_out', sql.VarChar(10))
       .execute('SP_TaoNhanVien');
 
@@ -126,14 +127,14 @@ router.put('/:id', auth, chiManager, async (req, res) => {
     await poolConnect;
 
     await pool.request()
-      .input('manhanvien',     sql.VarChar,  manhanvien)
-      .input('machinhanh',     sql.VarChar,  machinhanh)
-      .input('maloainhanvien', sql.VarChar,  maloainhanvien)
-      .input('machucvu',       sql.Char,     machucvu)
-      .input('hoten',          sql.NVarChar, hoten)
-      .input('email',          sql.VarChar,  email || null)
-      .input('sodienthoai',    sql.Char,     sodienthoai)
-      .input('matkhauMoi',     sql.VarChar,  hashMoi)
+      .input('manhanvien',     sql.VarChar(10), manhanvien)
+      .input('machinhanh',     sql.VarChar(10), machinhanh)
+      .input('maloainhanvien', sql.VarChar(10), maloainhanvien)
+      .input('machucvu',       sql.VarChar(10), machucvu)         // [FIX] Char -> VarChar(10)
+      .input('hoten',          sql.NVarChar(50), hoten)
+      .input('email',          sql.VarChar(50), email || null)
+      .input('sodienthoai',    sql.Char(10),    sodienthoai)
+      .input('matkhauMoi',     sql.VarChar(255), hashMoi)
       .execute('SP_CapNhatNhanVien');
 
     res.json({ message: 'Cập nhật nhân viên thành công' });
@@ -148,6 +149,46 @@ router.put('/:id', auth, chiManager, async (req, res) => {
       return res.status(409).json({ message: 'Số điện thoại đã tồn tại' });
     }
 
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// PATCH /api/taikhoan/:id/lock — Khóa / mở khóa tài khoản
+// Body: { trangthaikhoa: 0 | 1 }
+// ═══════════════════════════════════════════════════
+router.patch('/:id/lock', auth, chiManager, async (req, res) => {
+  const manhanvien = req.params.id;
+  const { trangthaikhoa } = req.body;
+
+  if (trangthaikhoa !== 0 && trangthaikhoa !== 1) {
+    return res.status(400).json({ message: 'trangthaikhoa phải là 0 hoặc 1' });
+  }
+
+  try {
+    await poolConnect;
+
+    const result = await pool.request()
+      .input('manhanvien',    sql.VarChar(10), manhanvien)
+      .input('trangthaikhoa', sql.Bit,         trangthaikhoa)
+      .query(`
+        UPDATE Tai_khoan
+        SET trangthaikhoa = @trangthaikhoa,
+            solansaidangnhap = 0
+        WHERE manhanvien = @manhanvien
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ message: 'Tài khoản không tồn tại' });
+    }
+
+    res.json({
+      message: trangthaikhoa === 1 ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản',
+      trangthaikhoa
+    });
+
+  } catch (err) {
+    console.error('❌ PATCH taikhoan/lock:', err.message);
     res.status(500).json({ message: 'Lỗi server' });
   }
 });
@@ -169,7 +210,7 @@ router.delete('/:id', auth, chiManager, async (req, res) => {
     await poolConnect;
 
     await pool.request()
-      .input('manhanvien', sql.VarChar, manhanvien)
+      .input('manhanvien', sql.VarChar(10), manhanvien)
       .execute('SP_XoaNhanVien');
 
     res.json({ message: 'Xóa nhân viên thành công' });
@@ -182,6 +223,46 @@ router.delete('/:id', auth, chiManager, async (req, res) => {
     }
 
     res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// ĐƯỜNG DẪN MỚI THÊM: GET /api/taikhoan/chucvu
+// Lấy danh sách chức vụ thật từ Database
+// ═══════════════════════════════════════════════════
+router.get('/chucvu', auth, chiManager, async (req, res) => {
+  try {
+    await poolConnect;
+    const result = await pool.request().query(`
+      SELECT 
+        RTRIM(machucvu) AS machucvu, 
+        RTRIM(tenchucvu) AS tenchucvu 
+      FROM Chuc_vu
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('❌ GET chucvu:', err.message);
+    res.status(500).json({ message: 'Lỗi server khi tải chức vụ' });
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// ĐƯỜNG DẪN MỚI THÊM: GET /api/taikhoan/loainhanvien
+// Lấy danh sách loại nhân viên thật từ Database
+// ═══════════════════════════════════════════════════
+router.get('/loainhanvien', auth, chiManager, async (req, res) => {
+  try {
+    await poolConnect;
+    const result = await pool.request().query(`
+      SELECT 
+        RTRIM(maloainhanvien) AS maloainhanvien, 
+        RTRIM(tenloainhanvien) AS tenloainhanvien 
+      FROM Loai_nhan_vien
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('❌ GET loainhanvien:', err.message);
+    res.status(500).json({ message: 'Lỗi server khi tải loại nhân viên' });
   }
 });
 

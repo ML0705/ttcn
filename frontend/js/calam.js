@@ -1,55 +1,41 @@
 /* =============================================================
-   calm.js — Quản lý ca làm
-   Phụ thuộc: shared.js (load trước)
-   KHI BACKEND XONG: thay các khối TODO bằng apiFetch(...)
+   calam.js — Quản lý ca làm (Kết nối API thật)
+   Phụ thuộc: shared.js (load trước) — dùng apiFetch, showToast,
+              openModal/closeModal, openSidePanel/closeSidePanel,
+              _confirmCb
    ============================================================= */
 
-/* ── Mock data (đồng bộ với seed.sql) ── */
-let mockCaLam = [
-  {
-    maca: 'C01', tenca: 'Ca sáng',
-    batdau: '08:00', ketthuc: '12:00',
-    loai: 'parttime',   // phù hợp loại NV
-    solichdangdung: 5,
-  },
-  {
-    maca: 'C02', tenca: 'Ca chiều',
-    batdau: '13:00', ketthuc: '17:00',
-    loai: 'parttime',
-    solichdangdung: 4,
-  },
-  {
-    maca: 'C03', tenca: 'Ca tối',
-    batdau: '17:00', ketthuc: '21:00',
-    loai: 'parttime',
-    solichdangdung: 2,
-  },
-];
-
 /* ── State ── */
-let _editingMa  = null;   // null = thêm mới
-
+let caLamList  = [];   // dữ liệu thật từ GET /api/calam
+let _editingMa = null;  // null = thêm mới
 
 /* ══════════════════════════════════════════
    INIT
 ══════════════════════════════════════════ */
-function initCaLam() {
+async function initCaLam() {
+  bindPanelEvents();
+  await loadCaLam();
+}
+
+/* ══════════════════════════════════════════
+   LOAD DỮ LIỆU
+══════════════════════════════════════════ */
+async function loadCaLam() {
+  try {
+    caLamList = await apiFetch('/calam');
+  } catch (err) {
+    showToast(err.message || 'Không thể tải danh sách ca làm', 'error');
+    caLamList = [];
+  }
   renderStats();
   renderList();
-  bindPanelEvents();
 }
 
 /* ══════════════════════════════════════════
    STATS
 ══════════════════════════════════════════ */
 function renderStats() {
-  const total    = mockCaLam.length;
-  const parttime = mockCaLam.filter(c => c.loai === 'parttime' || c.loai === 'both').length;
-  const fulltime = mockCaLam.filter(c => c.loai === 'fulltime' || c.loai === 'both').length;
-
-  document.getElementById('st-total').textContent    = total;
-  document.getElementById('st-parttime').textContent = parttime;
-  document.getElementById('st-fulltime').textContent = fulltime;
+  document.getElementById('st-total').textContent = caLamList.length;
 }
 
 /* ══════════════════════════════════════════
@@ -59,61 +45,40 @@ function renderList() {
   const container = document.getElementById('ca-list');
   const empty     = document.getElementById('ca-empty');
 
-  if (mockCaLam.length === 0) {
+  if (caLamList.length === 0) {
     container.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
 
-  container.innerHTML = mockCaLam.map(ca => buildCard(ca)).join('');
+  container.innerHTML = caLamList.map(ca => buildCard(ca)).join('');
 }
 
 function buildCard(ca) {
-  const dur     = calcDuration(ca.batdau, ca.ketthuc);
-  const loaiChip = loaiToChip(ca.loai);
-  const usage   = ca.solichdangdung ?? ca.solichdangdung ?? ca.solichdangdung;
-  const usageNum = ca.solichdangdung ?? ca.solichdangdung ?? 0;
-
-  // Đếm số lịch đang dùng (mock: lấy từ field)
-  const solich = typeof ca.solichdangdung === 'number'
-    ? ca.solichdangdung
-    : (typeof ca.solichdangdung === 'number' ? ca.solichdangdung : 0);
-
-  const usageCls  = solich > 0 ? '' : 'empty';
-  const usageTxt  = solich > 0
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${solich} lịch đang dùng`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg> Chưa có lịch`;
+  const dur = calcDuration(ca.batdau, ca.ketthuc);
 
   return `
   <div class="ca-card" id="card-${ca.maca}">
     <div class="ca-time-col">
-      <div class="ca-time-range">${ca.batdau} – ${ca.ketthuc}</div>
+      <div class="ca-time-range">${fmtTime(ca.batdau)} – ${fmtTime(ca.ketthuc)}</div>
       <div class="ca-duration">${dur}</div>
     </div>
     <div class="ca-info-col">
       <div class="ca-name-row">
         <span class="ca-name">${ca.tenca}</span>
         <span class="ca-code">${ca.maca}</span>
-        ${loaiChip}
       </div>
       <div class="ca-meta">
         <div class="ca-meta-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          Bắt đầu: <strong>${ca.batdau}</strong>
+          Bắt đầu: <strong>${fmtTime(ca.batdau)}</strong>
         </div>
         <div class="ca-meta-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          Kết thúc: <strong>${ca.ketthuc}</strong>
-        </div>
-        <div class="ca-meta-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          Phù hợp: <strong>${loaiLabel(ca.loai)}</strong>
+          Kết thúc: <strong>${fmtTime(ca.ketthuc)}</strong>
         </div>
       </div>
-    </div>
-    <div class="ca-usage-col">
-      <div class="usage-chip ${usageCls}">${usageTxt}</div>
     </div>
     <div class="ca-action-col">
       <button class="btn-ca-action edit" title="Chỉnh sửa ca" onclick="openEdit('${ca.maca}')">
@@ -133,25 +98,35 @@ function buildCard(ca) {
 }
 
 /* ── Helpers ── */
-function calcDuration(batdau, ketthuc) {
+
+// Backend trả batdau/ketthuc dạng TIME của SQL Server qua driver mssql
+// -> JS Date object dạng '1970-01-01THH:MM:SS.000Z' (epoch + giờ UTC).
+// KHÔNG dùng toLocaleTimeString vì nó áp timezone máy (VN=UTC+7),
+// gây lệch +7h. Phải đọc UTC hours/minutes trực tiếp.
+function fmtTime(val) {
+  if (!val) return '--:--';
+
+  if (typeof val === 'string') {
+    // Dạng 'HH:MM:SS' thuần (hiếm khi xảy ra với driver mssql, nhưng phòng hờ)
+    if (!val.includes('T') && val.includes(':')) return val.substring(0, 5);
+    val = new Date(val);
+  }
+
+  const d = val instanceof Date ? val : new Date(val);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function calcDuration(batdauRaw, ketthucRaw) {
+  const batdau  = fmtTime(batdauRaw);
+  const ketthuc = fmtTime(ketthucRaw);
   const [h1, m1] = batdau.split(':').map(Number);
   const [h2, m2] = ketthuc.split(':').map(Number);
   const mins = (h2 * 60 + m2) - (h1 * 60 + m1);
   if (mins <= 0) return '—';
   const h = Math.floor(mins / 60), m = mins % 60;
   return m > 0 ? `${h} tiếng ${m} phút` : `${h} tiếng`;
-}
-
-function loaiLabel(loai) {
-  return loai === 'fulltime' ? 'Full-time'
-       : loai === 'parttime' ? 'Part-time'
-       : 'Cả hai';
-}
-
-function loaiToChip(loai) {
-  if (loai === 'fulltime') return `<span class="type-chip fulltime">Full-time</span>`;
-  if (loai === 'parttime') return `<span class="type-chip parttime">Part-time</span>`;
-  return `<span class="type-chip both">Cả hai</span>`;
 }
 
 /* ══════════════════════════════════════════
@@ -165,19 +140,16 @@ function openAdd() {
 }
 
 function openEdit(maca) {
-  const ca = mockCaLam.find(c => c.maca === maca);
+  const ca = caLamList.find(c => c.maca === maca);
   if (!ca) return;
   _editingMa = maca;
   document.getElementById('panel-title').textContent = 'Chỉnh sửa ca làm';
 
   document.getElementById('f-tenca').value   = ca.tenca;
-  document.getElementById('f-batdau').value  = ca.batdau;
-  document.getElementById('f-ketthuc').value = ca.ketthuc;
+  document.getElementById('f-batdau').value  = fmtTime(ca.batdau);
+  document.getElementById('f-ketthuc').value = fmtTime(ca.ketthuc);
 
-  // Chọn loại
-  setLoaiOption(ca.loai);
   updatePreview();
-
   clearErrors();
   openSidePanel('ca-panel');
 }
@@ -186,7 +158,6 @@ function clearPanelForm() {
   document.getElementById('f-tenca').value   = '';
   document.getElementById('f-batdau').value  = '';
   document.getElementById('f-ketthuc').value = '';
-  setLoaiOption('parttime');
   updatePreview();
   clearErrors();
 }
@@ -198,28 +169,7 @@ function clearErrors() {
   });
 }
 
-function setLoaiOption(val) {
-  document.querySelectorAll('.loai-option').forEach(opt => {
-    opt.classList.toggle('selected', opt.dataset.val === val);
-    const input = opt.querySelector('input');
-    if (input) input.checked = opt.dataset.val === val;
-  });
-}
-
-function getLoaiSelected() {
-  const sel = document.querySelector('.loai-option.selected');
-  return sel ? sel.dataset.val : 'parttime';
-}
-
 function bindPanelEvents() {
-  // Chọn loại
-  document.querySelectorAll('.loai-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      setLoaiOption(opt.dataset.val);
-    });
-  });
-
-  // Preview thời gian khi nhập
   ['f-batdau', 'f-ketthuc'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', updatePreview);
   });
@@ -238,11 +188,11 @@ function updatePreview() {
 
 function validatePanel() {
   let ok = true;
-  const tenca  = document.getElementById('f-tenca').value.trim();
-  const batdau = document.getElementById('f-batdau').value;
-  const ketthuc= document.getElementById('f-ketthuc').value;
+  const tenca   = document.getElementById('f-tenca').value.trim();
+  const batdau  = document.getElementById('f-batdau').value;
+  const ketthuc = document.getElementById('f-ketthuc').value;
 
-  if (!tenca) { setE('e-tenca',  'Vui lòng nhập tên ca'); ok = false; }
+  if (!tenca) { setE('e-tenca', 'Vui lòng nhập tên ca'); ok = false; }
   else setE('e-tenca', '');
 
   if (!batdau) { setE('e-batdau', 'Vui lòng chọn giờ bắt đầu'); ok = false; }
@@ -262,60 +212,83 @@ function setE(id, msg) {
   if (el) el.textContent = msg;
 }
 
-function saveCalm() {
+/* ══════════════════════════════════════════
+   LƯU (THÊM / SỬA)
+══════════════════════════════════════════ */
+async function saveCalam() {
   if (!validatePanel()) return;
 
   const data = {
     tenca:   document.getElementById('f-tenca').value.trim(),
     batdau:  document.getElementById('f-batdau').value,
     ketthuc: document.getElementById('f-ketthuc').value,
-    loai:    getLoaiSelected(),
   };
 
-  if (_editingMa) {
-    // Cập nhật
-    const idx = mockCaLam.findIndex(c => c.maca === _editingMa);
-    if (idx !== -1) mockCaLam[idx] = { ...mockCaLam[idx], ...data };
-    showToast(`Đã cập nhật ${data.tenca}`, 'success');
-    /* TODO: await apiFetch(`/api/calm/${_editingMa}`, 'PUT', data) */
-  } else {
-    // Thêm mới
-    const seq  = mockCaLam.length + 1;
-    const maca = 'C' + String(seq).padStart(2, '0');
-    mockCaLam.push({ maca, solichdangdung: 0, ...data });
-    showToast(`Đã tạo ${data.tenca}`, 'success');
-    /* TODO: await apiFetch('/api/calm', 'POST', data) */
-  }
+  const btn = document.getElementById('btn-save-ca');
+  btn.disabled = true;
 
-  closeSidePanel('ca-panel');
-  renderStats();
-  renderList();
+  try {
+    if (_editingMa) {
+      await apiFetch(`/calam/${_editingMa}`, 'PUT', data);
+      showToast(`Đã cập nhật ${data.tenca}`, 'success');
+    } else {
+      await apiFetch('/calam', 'POST', data);
+      showToast(`Đã tạo ${data.tenca}`, 'success');
+    }
+
+    closeSidePanel('ca-panel');
+    await loadCaLam();
+
+  } catch (err) {
+    // Lỗi validate giờ (CK_CL_Gio) -> hiện ngay dưới ô giờ kết thúc
+    if ((err.message || '').includes('Giờ kết thúc phải sau giờ bắt đầu')) {
+      setE('e-ketthuc', err.message);
+    } else {
+      showToast(err.message || 'Lưu thất bại', 'error');
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 /* ══════════════════════════════════════════
-   XÓA CA
+   XÓA CA — luồng 2 bước (409 -> force=true)
 ══════════════════════════════════════════ */
 function askDelete(maca) {
-  const ca = mockCaLam.find(c => c.maca === maca);
+  const ca = caLamList.find(c => c.maca === maca);
   if (!ca) return;
 
-  const hasUsage = (ca.solichdangdung ?? 0) > 0;
-
-  document.getElementById('confirm-icon').textContent  = hasUsage ? '⚠️' : '🗑️';
+  document.getElementById('confirm-icon').textContent  = '🗑️';
   document.getElementById('confirm-title').textContent = `Xóa "${ca.tenca}"?`;
-  document.getElementById('confirm-text').textContent  = hasUsage
-    ? `Ca này đang có ${ca.solichdangdung} lịch làm liên kết. Xóa sẽ ảnh hưởng đến lịch của nhân viên.`
-    : 'Bạn có chắc muốn xóa ca làm này?';
+  document.getElementById('confirm-text').textContent  = 'Bạn có chắc muốn xóa ca làm này?';
 
-  _confirmCb = () => deleteCalm(maca);
+  _confirmCb = () => deleteCalam(maca, false);
   openModal('confirm-modal');
 }
 
-function deleteCalm(maca) {
-  mockCaLam = mockCaLam.filter(c => c.maca !== maca);
-  showToast('Đã xóa ca làm', 'success');
-  renderStats();
-  renderList();
-  /* TODO: await apiFetch(`/api/calm/${maca}`, 'DELETE') */
-}
+async function deleteCalam(maca, force) {
+  try {
+    const path = force ? `/calam/${maca}?force=true` : `/calam/${maca}`;
+    await apiFetch(path, 'DELETE');
 
+    showToast('Đã xóa ca làm', 'success');
+    await loadCaLam();
+
+  } catch (err) {
+    // 409: còn lịch làm liên quan -> hỏi xác nhận xóa cascade
+    if (err.status === 409) {
+      const soLich = err.data?.soLich ?? 0;
+
+      document.getElementById('confirm-icon').textContent  = '⚠️';
+      document.getElementById('confirm-title').textContent = 'Ca này đang được sử dụng';
+      document.getElementById('confirm-text').textContent  =
+        `Ca này đang có ${soLich} lịch làm liên kết. Xóa sẽ xóa luôn toàn bộ lịch làm, đăng ký và chấm công liên quan. Tiếp tục?`;
+
+      _confirmCb = () => deleteCalam(maca, true);
+      openModal('confirm-modal');
+      return;
+    }
+
+    showToast(err.message || 'Xóa thất bại', 'error');
+  }
+}

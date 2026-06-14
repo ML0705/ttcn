@@ -143,252 +143,402 @@
   <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
   <div class="side-overlay" id="side-overlay"></div>
 
-  <script src="../js/shared.js"></script>
-  <!-- <script src="../js/utils.js"></script> -->
-  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi có API, thay phần dữ liệu mock
-       (registered, CLOSED_SHIFTS) trong initRegisterPage() bằng apiFetch('/dangky/...') -->
-  <script>
-    initLayout(['nhanvien']).then(user => {
-      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+ <script src="../js/shared.js"></script>
+<script>
+/* ============================================================
+   dangky.js — Đăng ký ca làm (nhân viên)
+   Logic:
+   - Xem được tất cả các tuần
+   - Chỉ được ĐĂNG KÝ cho tuần tới, trước thứ 7 tuần hiện tại
+============================================================ */
 
-      initRegisterPage();
+// ── State ──
+let allShifts        = [];
+let lichTuan         = [];
+let editSelection    = {};
+let registeredSet    = {};
+let currentWeekStart = null;
+
+const DAYS_VN_LABEL = ['T2','T3','T4','T5','T6','T7','CN'];
+
+// ── Helpers tuần ──
+function getMondayOf(d) {
+  const date = new Date(d);
+  const day  = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(d, n) {
+  const date = new Date(d);
+  date.setDate(date.getDate() + n);
+  return date;
+}
+
+function getNextWeekMonday() {
+  const today  = new Date();
+  const thu    = today.getDay();
+  const soNgay = thu === 0 ? 1 : 8 - thu;
+  const d      = new Date(today);
+  d.setDate(today.getDate() + soNgay);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isNextWeek(weekStart) {
+  return weekStart.toDateString() === getNextWeekMonday().toDateString();
+}
+
+// Còn hạn đăng ký = hôm nay từ T2 đến T6 (chưa T7, CN)
+function conHanDangKy() {
+  const thu = new Date().getDay();
+  return thu >= 1 && thu <= 5;
+}
+
+// Tuần đang xem có thể chỉnh sửa không?
+function coTheChinhSua() {
+  return isNextWeek(currentWeekStart) && conHanDangKy();
+}
+
+// ── Init ──
+initLayout(['nhanvien']).then(async user => {
+  if (!user) return;
+
+  currentWeekStart = getNextWeekMonday();
+  allShifts = await apiFetch('/lichlam/cacalam').catch(() => []);
+
+  await loadWeek();
+  renderBanner();
+  renderViewGrid();
+  updateTabButtons();
+  switchTab('view');
+});
+
+/* ============================================================
+   LOAD DỮ LIỆU TUẦN ĐANG XEM
+============================================================ */
+async function loadWeek() {
+  try {
+    const startStr = currentWeekStart.toISOString().slice(0, 10);
+    lichTuan = await apiFetch(`/lichlam/tuan?start=${startStr}`);
+
+    registeredSet = {};
+    lichTuan.forEach(item => {
+      if (item.daDangKy) registeredSet[item.malichlam] = true;
     });
+  } catch (err) {
+    lichTuan      = [];
+    registeredSet = {};
+    showToast('Không tải được dữ liệu lịch làm', 'error');
+  }
+}
 
-    /* ===================================================================
-       DỮ LIỆU TRANG ĐĂNG KÝ CA LÀM (MOCK)
-       - key của mỗi ô = `${shiftIndex}_${dayIndex}` (dayIndex 0=T2 ... 6=CN)
-       - registered: các ca nhân viên đã đăng ký cho tuần đang xem
-       - CLOSED_SHIFTS: các ca chi nhánh không hoạt động (không thể đăng ký)
-    =================================================================== */
-    const SHIFTS = [
-      { name: 'Ca sáng', time: '07:00 – 12:00' },
-      { name: 'Ca chiều', time: '12:00 – 17:00' },
-      { name: 'Ca tối', time: '17:00 – 21:00' },
-    ];
+/* ============================================================
+   ĐỔI TUẦN
+============================================================ */
+async function changeWeek(delta) {
+  currentWeekStart = addDays(currentWeekStart, delta * 7);
+  await loadWeek();
+  renderBanner();
+  renderViewGrid();
+  updateTabButtons();
 
-    const CLOSED_SHIFTS = { '0_6': true, '1_6': true }; // ví dụ: CN không có ca sáng/chiều
+  // Nếu đang ở tab edit/confirm mà chuyển tuần không hợp lệ → về tab view
+  if (!coTheChinhSua()) {
+    ['edit','confirm'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = 'none';
+      document.getElementById(`tab-btn-${t}`).classList.remove('active');
+    });
+    document.getElementById('tab-view').style.display = 'block';
+    document.getElementById('tab-btn-view').classList.add('active');
+  }
+}
 
-    let weekOffset = 1; // tuần đang đăng ký (tuần kế tiếp)
-    let registered = { '0_1': true, '0_3': true, '1_0': true, '2_2': true, '2_6': true }; // mock đã đăng ký
-    let editSelection = {};
+/* ============================================================
+   CẬP NHẬT TRẠNG THÁI NÚT TAB
+============================================================ */
+function updateTabButtons() {
+  const coThe = coTheChinhSua();
 
-    function initRegisterPage() {
-      renderBanner();
-      renderViewGrid();
-      switchTab('view');
-    }
+  const btnEdit    = document.getElementById('tab-btn-edit');
+  const btnConfirm = document.getElementById('tab-btn-confirm');
 
-    /* ===== Banner hạn đăng ký ===== */
-    function renderBanner() {
-      const dates = getWeekDates(weekOffset);
-      const deadline = new Date(dates[0]);
-      deadline.setDate(deadline.getDate() - 1); // Chủ nhật tuần trước = hạn đăng ký
+  btnEdit.disabled    = !coThe;
+  btnConfirm.disabled = !coThe;
 
-      document.getElementById('banner-week-range').textContent =
-        `${fmtDate(dates[0])} – ${fmtDate(dates[6])}/${dates[6].getFullYear()}`;
-      document.getElementById('banner-deadline').textContent =
-        `Chủ nhật ${fmtDate(deadline)}, 23:59`;
-    }
+  btnEdit.title = coThe ? '' : 'Chỉ được chỉnh sửa lịch tuần tới, trước thứ 7';
+  btnConfirm.title = coThe ? '' : 'Chỉ được đăng ký lịch tuần tới, trước thứ 7';
+}
 
-    /* ===== Chuyển tab Xem / Chỉnh sửa / Xác nhận ===== */
-    function switchTab(tab) {
-      ['view', 'edit', 'confirm'].forEach(t => {
-        document.getElementById(`tab-${t}`).style.display = (t === tab) ? 'block' : 'none';
-        document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
-      });
+/* ============================================================
+   BANNER
+============================================================ */
+function renderBanner() {
+  const endOfWeek = addDays(currentWeekStart, 6);
 
-      if (tab === 'edit') {
-        editSelection = { ...registered };
-        renderEditGrid();
-        document.getElementById('edit-week-label').textContent = getWeekRangeLabel(weekOffset);
-        document.getElementById('tab-btn-confirm').disabled = false;
-      }
-      if (tab === 'confirm') {
-        renderConfirmTable();
-      }
-    }
+  document.getElementById('banner-week-range').textContent =
+    `${fmtDate(currentWeekStart)} – ${fmtDate(endOfWeek)}/${endOfWeek.getFullYear()}`;
 
-    /* ===== Điều hướng tuần (chỉ áp dụng cho tab Xem) ===== */
-    function changeWeek(delta) {
-      weekOffset += delta;
-      renderBanner();
-      renderViewGrid();
-    }
+  // Deadline = thứ 6 tuần trước tuần đăng ký (T2 - 3 ngày)
+  const deadline = addDays(currentWeekStart, -3);
+  document.getElementById('banner-deadline').textContent =
+    `Thứ 6, ${fmtDate(deadline)}, 23:59`;
 
-    function getWeekRangeLabel(offset) {
-      const dates = getWeekDates(offset);
-      return `${fmtDate(dates[0])} – ${fmtDate(dates[6])}/${dates[6].getFullYear()}`;
-    }
+  const nextWeek = isNextWeek(currentWeekStart);
+  const conHan   = conHanDangKy();
 
-    function isToday(date) {
-      const now = new Date();
-      return date.getDate() === now.getDate() &&
-             date.getMonth() === now.getMonth() &&
-             date.getFullYear() === now.getFullYear();
-    }
+  if (nextWeek && conHan) {
+    document.getElementById('reg-banner-open').style.display    = 'block';
+    document.getElementById('reg-banner-expired').style.display = 'none';
+  } else if (nextWeek && !conHan) {
+    document.getElementById('reg-banner-open').style.display    = 'none';
+    document.getElementById('reg-banner-expired').style.display = 'block';
+  } else {
+    // Tuần khác tuần tới → ẩn cả 2 banner
+    document.getElementById('reg-banner-open').style.display    = 'none';
+    document.getElementById('reg-banner-expired').style.display = 'none';
+  }
+}
 
-    /* ===== Render header (dòng ngày) dùng chung cho cả 2 bảng ===== */
-    function buildGridHeader(dates) {
-      let html = '<thead><tr><th style="text-align:left; min-width:120px;">Ca làm</th>';
-      DAYS_VN.forEach((day, i) => {
-        const todayCls = isToday(dates[i]) ? ' style="background:var(--accent-light); color:var(--accent);"' : '';
-        html += `<th${todayCls}>${day}<br><span style="font-size:10px; font-weight:400;">${fmtDate(dates[i])}</span></th>`;
-      });
-      html += '</tr></thead>';
-      return html;
-    }
+/* ============================================================
+   HELPERS
+============================================================ */
+function buildLichMap() {
+  const map = {};
+  lichTuan.forEach(item => {
+    const ngay = item.ngay.slice(0, 10);
+    map[`${ngay}_${item.maca}`] = item.malichlam;
+  });
+  return map;
+}
 
-    /* ====================================================================
-       TAB XEM — bảng read-only
-    ==================================================================== */
-    function renderViewGrid() {
-      const dates = getWeekDates(weekOffset);
-      let html = buildGridHeader(dates) + '<tbody>';
+function getDatesOfWeek() {
+  return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+}
 
-      SHIFTS.forEach((sh, si) => {
-        html += `<tr><td class="wg-shift-label">${sh.name}<br>
-          <span style="font-size:10px; font-weight:400; color:var(--ink-muted);">${sh.time}</span></td>`;
+function isToday(d) {
+  const now = new Date();
+  return d.getDate()     === now.getDate() &&
+         d.getMonth()    === now.getMonth() &&
+         d.getFullYear() === now.getFullYear();
+}
 
-        DAYS_VN.forEach((_, di) => {
-          const k = `${si}_${di}`;
-          if (CLOSED_SHIFTS[k]) {
-            html += `<td><div class="wg-cell"><span class="text-sm text-muted">Đóng cửa</span></div></td>`;
-          } else if (registered[k]) {
-            html += `<td><div class="wg-cell"><span class="badge badge-green">✓ Đã đăng ký</span></div></td>`;
-          } else {
-            html += `<td><div class="wg-cell"><span class="badge badge-gray">Chưa đăng ký</span></div></td>`;
-          }
-        });
+function buildGridHeader(dates) {
+  let html = '<thead><tr><th style="text-align:left;min-width:120px;">Ca làm</th>';
+  dates.forEach((d, i) => {
+    const style = isToday(d)
+      ? ' style="background:var(--accent-light);color:var(--accent);"' : '';
+    html += `<th${style}>${DAYS_VN_LABEL[i]}<br>
+      <span style="font-size:10px;font-weight:400;">${fmtDate(d)}</span></th>`;
+  });
+  return html + '</tr></thead>';
+}
 
-        html += '</tr>';
-      });
+function fmtTime(val) {
+  if (!val) return '';
+  const s = val.toString();
+  return s.includes('T') ? s.slice(11, 16) : s.slice(0, 5);
+}
 
-      html += '</tbody>';
-      document.getElementById('view-grid').innerHTML = html;
-      document.getElementById('view-week-label').textContent = getWeekRangeLabel(weekOffset);
-      document.getElementById('view-reg-count').textContent =
-        `${Object.keys(registered).length} ca`;
-    }
+function getWeekLabel() {
+  const end = addDays(currentWeekStart, 6);
+  return `${fmtDate(currentWeekStart)} – ${fmtDate(end)}/${end.getFullYear()}`;
+}
 
-    /* ====================================================================
-       TAB CHỈNH SỬA — bảng tương tác (chọn / bỏ chọn ca)
-    ==================================================================== */
-    function renderEditGrid() {
-      const dates = getWeekDates(weekOffset);
-      let html = buildGridHeader(dates) + '<tbody>';
+/* ============================================================
+   TAB XEM
+============================================================ */
+function renderViewGrid() {
+  const dates   = getDatesOfWeek();
+  const lichMap = buildLichMap();
 
-      SHIFTS.forEach((sh, si) => {
-        html += `<tr><td class="wg-shift-label">${sh.name}<br>
-          <span style="font-size:10px; font-weight:400; color:var(--ink-muted);">${sh.time}</span></td>`;
+  document.getElementById('view-week-label').textContent = getWeekLabel();
 
-        DAYS_VN.forEach((_, di) => {
-          const k = `${si}_${di}`;
+  if (!lichTuan.length) {
+    document.getElementById('view-grid').innerHTML =
+      `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--ink-muted)">
+        Chưa có lịch làm cho tuần này
+      </td></tr>`;
+    document.getElementById('view-reg-count').textContent = '0 ca';
+    return;
+  }
 
-          if (CLOSED_SHIFTS[k]) {
-            html += `<td><div class="wg-cell"><span class="text-sm text-muted">Đóng cửa</span></div></td>`;
-          } else {
-            const checked = !!editSelection[k];
-            html += `<td><div class="wg-cell interactive ${checked ? 'checked' : ''}" onclick="toggleCell(${si},${di})">
-              ${checked
-                ? '<span class="badge badge-green">✓ Đã đăng ký</span>'
-                : '<span class="text-sm" style="color:var(--ink-muted)">+ Đăng ký</span>'}
-            </div></td>`;
-          }
-        });
+  let html = buildGridHeader(dates) + '<tbody>';
+  allShifts.forEach(shift => {
+    html += `<tr><td class="wg-shift-label">${shift.tenca}<br>
+      <span style="font-size:10px;font-weight:400;color:var(--ink-muted);">
+        ${fmtTime(shift.batdau)} – ${fmtTime(shift.ketthuc)}
+      </span></td>`;
 
-        html += '</tr>';
-      });
+    dates.forEach(d => {
+      const key       = `${d.toISOString().slice(0,10)}_${shift.maca}`;
+      const malichlam = lichMap[key];
 
-      html += '</tbody>';
-      document.getElementById('edit-grid').innerHTML = html;
-    }
-
-    function toggleCell(si, di) {
-      const k = `${si}_${di}`;
-      if (CLOSED_SHIFTS[k]) return;
-      if (editSelection[k]) {
-        delete editSelection[k];
+      if (!malichlam) {
+        html += `<td><div class="wg-cell"><span class="text-sm text-muted">—</span></div></td>`;
+      } else if (registeredSet[malichlam]) {
+        html += `<td><div class="wg-cell"><span class="badge badge-green">✓ Đã đăng ký</span></div></td>`;
       } else {
-        editSelection[k] = true;
+        html += `<td><div class="wg-cell"><span class="badge badge-gray">Chưa đăng ký</span></div></td>`;
       }
-      renderEditGrid();
-    }
+    });
+    html += '</tr>';
+  });
 
-    function resetEdit() {
-      editSelection = { ...registered };
-      renderEditGrid();
-      showToast('Đã đặt lại theo lịch đã đăng ký', 'info');
-    }
+  html += '</tbody>';
+  document.getElementById('view-grid').innerHTML = html;
+  document.getElementById('view-reg-count').textContent =
+    `${Object.keys(registeredSet).length} ca`;
+}
 
-    /* ====================================================================
-       TAB XÁC NHẬN — bảng tổng hợp các ca đã chọn
-    ==================================================================== */
-    function goConfirm() {
-      const keys = Object.keys(editSelection);
-      if (!keys.length) {
-        showToast('Vui lòng chọn ít nhất một ca!', 'error');
-        return;
+/* ============================================================
+   TAB CHỈNH SỬA
+============================================================ */
+function renderEditGrid() {
+  const dates   = getDatesOfWeek();
+  const lichMap = buildLichMap();
+
+  let html = buildGridHeader(dates) + '<tbody>';
+  allShifts.forEach(shift => {
+    html += `<tr><td class="wg-shift-label">${shift.tenca}<br>
+      <span style="font-size:10px;font-weight:400;color:var(--ink-muted);">
+        ${fmtTime(shift.batdau)} – ${fmtTime(shift.ketthuc)}
+      </span></td>`;
+
+    dates.forEach(d => {
+      const key       = `${d.toISOString().slice(0,10)}_${shift.maca}`;
+      const malichlam = lichMap[key];
+
+      if (!malichlam) {
+        html += `<td><div class="wg-cell"><span class="text-sm text-muted">—</span></div></td>`;
+      } else {
+        const checked = !!editSelection[malichlam];
+        html += `<td>
+          <div class="wg-cell interactive ${checked ? 'checked' : ''}"
+               onclick="toggleCell('${malichlam}')">
+            ${checked
+              ? '<span class="badge badge-green">✓ Đã chọn</span>'
+              : '<span class="text-sm" style="color:var(--ink-muted)">+ Đăng ký</span>'}
+          </div></td>`;
       }
-      switchTab('confirm');
-    }
+    });
+    html += '</tr>';
+  });
 
-    function renderConfirmTable() {
-      const dates = getWeekDates(weekOffset);
-      const keys = Object.keys(editSelection);
-      const table = document.getElementById('confirm-table');
-      const empty = document.getElementById('confirm-empty');
+  html += '</tbody>';
+  document.getElementById('edit-grid').innerHTML = html;
+  document.getElementById('edit-week-label').textContent = getWeekLabel();
+}
 
-      if (!keys.length) {
-        table.innerHTML = '';
-        empty.style.display = 'block';
-        return;
+function toggleCell(malichlam) {
+  if (editSelection[malichlam]) delete editSelection[malichlam];
+  else editSelection[malichlam] = true;
+  renderEditGrid();
+}
+
+function resetEdit() {
+  editSelection = { ...registeredSet };
+  renderEditGrid();
+  showToast('Đã đặt lại theo lịch đã đăng ký', 'info');
+}
+
+/* ============================================================
+   TAB XÁC NHẬN
+============================================================ */
+function goConfirm() {
+  if (!Object.keys(editSelection).length) {
+    showToast('Vui lòng chọn ít nhất một ca!', 'error');
+    return;
+  }
+  switchTab('confirm');
+}
+
+function renderConfirmTable() {
+  const keys  = Object.keys(editSelection);
+  const table = document.getElementById('confirm-table');
+  const empty = document.getElementById('confirm-empty');
+
+  if (!keys.length) {
+    table.innerHTML    = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const rows = keys.map(ml => {
+    const item  = lichTuan.find(l => l.malichlam === ml);
+    const shift = allShifts.find(s => s.maca === item?.maca);
+    return { item, shift };
+  }).filter(r => r.item && r.shift)
+    .sort((a, b) => new Date(a.item.ngay) - new Date(b.item.ngay));
+
+  let html = '<thead><tr><th>Ngày</th><th>Thứ</th><th>Ca làm</th><th>Giờ</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const d   = new Date(r.item.ngay);
+    const thu = DAYS_VN_LABEL[d.getDay() === 0 ? 6 : d.getDay() - 1];
+    html += `<tr>
+      <td>${fmtDate(d)}/${d.getFullYear()}</td>
+      <td>${thu}</td>
+      <td>${r.shift.tenca}</td>
+      <td>${fmtTime(r.shift.batdau)} – ${fmtTime(r.shift.ketthuc)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/* ============================================================
+   GỬI ĐĂNG KÝ
+============================================================ */
+async function confirmSubmit() {
+  const keys = Object.keys(editSelection);
+  if (!keys.length) {
+    showToast('Vui lòng chọn ít nhất một ca!', 'error');
+    return;
+  }
+
+  showConfirm(
+    'Xác nhận gửi đăng ký',
+    `Đăng ký ${keys.length} ca làm cho tuần ${getWeekLabel()}?`,
+    async () => {
+      try {
+        await apiFetch('/lichlam/dangky', 'POST', { danhSachMaLich: keys });
+        registeredSet = { ...editSelection };
+        renderViewGrid();
+        switchTab('view');
+        showToast('Gửi đăng ký thành công!', 'success');
+      } catch (err) {
+        showToast(err.message || 'Gửi đăng ký thất bại', 'error');
       }
-      empty.style.display = 'none';
-
-      const rows = keys
-        .map(k => {
-          const [si, di] = k.split('_').map(Number);
-          return { shift: SHIFTS[si], date: dates[di], di };
-        })
-        .sort((a, b) => a.di - b.di);
-
-      let html = '<thead><tr><th>Ngày</th><th>Thứ</th><th>Ca làm</th><th>Giờ</th></tr></thead><tbody>';
-      rows.forEach(r => {
-        html += `<tr>
-          <td>${fmtDate(r.date)}/${r.date.getFullYear()}</td>
-          <td>${DAYS_VN[r.di]}</td>
-          <td>${r.shift.name}</td>
-          <td>${r.shift.time}</td>
-        </tr>`;
-      });
-      html += '</tbody>';
-      table.innerHTML = html;
     }
+  );
+}
 
-    /* ====================================================================
-       GỬI ĐĂNG KÝ (dùng popup confirm chung trong shared.js)
-       TODO Giai đoạn 3: thay phần cập nhật `registered` cục bộ bằng
-       apiFetch('/dangky/tuan', 'POST', { week: weekOffset, shifts: editSelection })
-    ==================================================================== */
-    function confirmSubmit() {
-      const keys = Object.keys(editSelection);
-      if (!keys.length) {
-        showToast('Vui lòng chọn ít nhất một ca!', 'error');
-        return;
-      }
-
-      showConfirm(
-        'Xác nhận gửi đăng ký',
-        `Bạn có chắc muốn gửi đăng ký ${keys.length} ca làm cho tuần ${getWeekRangeLabel(weekOffset)}? ` +
-        'Sau khi gửi, lịch sẽ chờ quản lý phê duyệt.',
-        () => {
-          registered = { ...editSelection };
-          renderViewGrid();
-          switchTab('view');
-          showToast('Gửi đăng ký thành công! Chờ quản lý phê duyệt.', 'success');
-        }
-      );
+/* ============================================================
+   SWITCH TAB — chặn nếu không hợp lệ
+============================================================ */
+function switchTab(tab) {
+  // Chặn vào tab edit/confirm nếu không đủ điều kiện
+  if ((tab === 'edit' || tab === 'confirm') && !coTheChinhSua()) {
+    if (!isNextWeek(currentWeekStart)) {
+      showToast('Chỉ được đăng ký ca làm cho tuần tới', 'error');
+    } else {
+      showToast('Đã hết hạn đăng ký (chỉ đăng ký từ T2 đến T6)', 'error');
     }
-  </script>
-</body>
-</html>
+    return; // không chuyển tab
+  }
+
+  ['view','edit','confirm'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display    = t === tab ? 'block' : 'none';
+    document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
+  });
+
+  if (tab === 'edit') {
+    editSelection = { ...registeredSet };
+    renderEditGrid();
+    document.getElementById('tab-btn-confirm').disabled = false;
+  }
+  if (tab === 'confirm') renderConfirmTable();
+}
+</script>
