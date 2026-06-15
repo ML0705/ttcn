@@ -3,6 +3,69 @@ const router  = express.Router();
 const auth    = require('../middleware/auth');
 const { sql, pool, poolConnect } = require('../config/db');
 
+// Lưu trạng thái chốt lịch tạm trong memory
+const trangThaiStore = {};
+
+// ═══════════════════════════════════════════════════
+// HELPER — Tính thứ 2 của tuần chứa ngày d
+// ═══════════════════════════════════════════════════
+function getMondayOfDate(d) {
+  const date = new Date(d);
+  const day  = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// ═══════════════════════════════════════════════════
+// HELPER — Tự động tạo Lich_lam cho 1 tuần
+// Chỉ tạo cho tuần SAU tuần hiện tại trở đi
+// Với mỗi ngày × mỗi ca → nếu chưa có thì INSERT
+// ═══════════════════════════════════════════════════
+async function autoTaoLichTuan(weekStart) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thuHienTai = getMondayOfDate(today);
+
+  // Không tạo cho tuần hiện tại hoặc quá khứ
+  if (weekStart <= thuHienTai) return;
+
+  // Lấy tất cả ca làm hiện tại
+  const caResult = await pool.request().query(`
+    SELECT RTRIM(maca) AS maca FROM Ca_lam
+  `);
+  const danhSachCa = caResult.recordset.map(r => r.maca);
+
+  if (danhSachCa.length === 0) return;
+
+  // Với mỗi ngày trong tuần × mỗi ca → tạo nếu chưa có
+  for (let i = 0; i < 7; i++) {
+    const ngay = new Date(weekStart);
+    ngay.setDate(weekStart.getDate() + i);
+    const ngayStr = ngay.toISOString().slice(0, 10);
+
+    for (const maca of danhSachCa) {
+      try {
+        await pool.request()
+          .input('maca', sql.Char,    maca)
+          .input('ngay', sql.Date,    ngayStr)
+          .query(`
+            IF NOT EXISTS (
+              SELECT 1 FROM Lich_lam
+              WHERE maca = @maca AND ngay = @ngay
+            )
+            INSERT INTO Lich_lam (maca, ngay)
+            VALUES (@maca, @ngay)
+          `);
+      } catch {
+        // Bỏ qua nếu trigger báo lỗi trùng
+      }
+    }
+  }
+
+  console.log(`✅ Auto-tạo lịch tuần ${weekStart.toISOString().slice(0,10)}`);
+}
+
 // ═══════════════════════════════════════════════════
 // GET /api/lichlam/cacalam
 // ═══════════════════════════════════════════════════
@@ -60,7 +123,17 @@ router.get('/slots', auth, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════
+// GET /api/lichlam/trangthai?tuan=yyyy-mm-dd
+// ═══════════════════════════════════════════════════
+router.get('/trangthai', auth, async (req, res) => {
+  const { tuan } = req.query;
+  if (!tuan) return res.status(400).json({ message: 'Thiếu tuan' });
+  res.json({ tuan, trangThai: trangThaiStore[tuan] || 'draft' });
+});
+
+// ═══════════════════════════════════════════════════
 // GET /api/lichlam/tuan — Lịch tuần của NV
+// Tự động tạo lịch nếu là tuần tương lai và chưa có
 // ═══════════════════════════════════════════════════
 router.get('/tuan', auth, async (req, res) => {
   const { manhanvien } = req.user;
@@ -83,6 +156,10 @@ router.get('/tuan', auth, async (req, res) => {
 
   try {
     await poolConnect;
+
+    // Tự động tạo lịch nếu tuần tương lai chưa có
+    await autoTaoLichTuan(t2TuanToi);
+
     const result = await pool.request()
       .input('manhanvien', sql.VarChar, manhanvien)
       .input('tuDngay',    sql.Date,    t2TuanToi)
@@ -121,9 +198,9 @@ router.post('/dangky', auth, async (req, res) => {
   if (!Array.isArray(danhSachMaLich))
     return res.status(400).json({ message: 'danhSachMaLich phải là mảng' });
 
-  const today  = new Date();
-  const thu    = today.getDay();
-  if (thu === 0 || thu === 7)
+  const today = new Date();
+  const thu   = today.getDay();
+  if (thu === 0 || thu === 6)
     return res.status(400).json({ message: 'Đã hết hạn đăng ký. Chỉ đăng ký từ T2 đến T6.' });
 
   const soNgay    = thu === 0 ? 1 : 8 - thu;
@@ -157,7 +234,10 @@ router.post('/dangky', auth, async (req, res) => {
         `);
     }
 
-    res.json({ message: `Đăng ký thành công ${danhSachMaLich.length} ca`, soCa: danhSachMaLich.length });
+    res.json({
+      message: `Đăng ký thành công ${danhSachMaLich.length} ca`,
+      soCa:    danhSachMaLich.length
+    });
   } catch (err) {
     console.error('❌ POST dangky:', err.message);
     res.status(500).json({ message: 'Lỗi server' });
@@ -166,6 +246,7 @@ router.post('/dangky', auth, async (req, res) => {
 
 // ═══════════════════════════════════════════════════
 // GET /api/lichlam/quanly — Quản lý xem lịch toàn bộ NV
+// Tự động tạo lịch nếu là tuần tương lai và chưa có
 // ═══════════════════════════════════════════════════
 router.get('/quanly', auth, async (req, res) => {
   if (req.user.vaiTro !== 'manager')
@@ -177,6 +258,12 @@ router.get('/quanly', auth, async (req, res) => {
 
   try {
     await poolConnect;
+
+    // Tự động tạo lịch nếu tuần tương lai chưa có
+    const weekStart = new Date(tuNgay);
+    weekStart.setHours(0, 0, 0, 0);
+    await autoTaoLichTuan(weekStart);
+
     const result = await pool.request()
       .input('machinhanh', sql.VarChar, machinhanh)
       .input('tuNgay',     sql.Date,    tuNgay)
@@ -227,9 +314,16 @@ router.post('/taolich', auth, async (req, res) => {
     const r = await pool.request()
       .input('maca', sql.Char, maca)
       .input('ngay', sql.Date, ngay)
-      .query(`SELECT RTRIM(malichlam) AS malichlam FROM Lich_lam WHERE maca=@maca AND ngay=@ngay`);
+      .query(`
+        SELECT RTRIM(malichlam) AS malichlam
+        FROM Lich_lam
+        WHERE maca = @maca AND ngay = @ngay
+      `);
 
-    res.status(201).json({ message: 'Tạo lịch thành công', malichlam: r.recordset[0]?.malichlam });
+    res.status(201).json({
+      message:   'Tạo lịch thành công',
+      malichlam: r.recordset[0]?.malichlam
+    });
   } catch (err) {
     console.error('❌ POST taolich:', err.message);
     if (err.message.includes('UQ_LL_NgayCa'))
@@ -307,8 +401,9 @@ router.post('/chot', auth, async (req, res) => {
   const { tuan } = req.body;
   if (!tuan) return res.status(400).json({ message: 'Thiếu tuan' });
 
-  // Trả về thành công — frontend tự lưu trạng thái locked trong memory
-  // (Schema không có cột trangthai trong Lich_lam nên không UPDATE DB)
+  // Lưu vào memory store
+  trangThaiStore[tuan] = 'locked';
+
   res.json({ message: 'Đã chốt lịch tuần thành công', tuan, trangThai: 'locked' });
 });
 
