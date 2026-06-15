@@ -6,6 +6,24 @@ const { getGPSChiNhanh, tinhKhoangCach } = require('./utils/geocode');
 
 const BAN_KINH_METER = 100;
 
+// ═══════════════════════════════════════════════════
+// HELPER: Ép chuẩn giờ Việt Nam (UTC+7)
+// ═══════════════════════════════════════════════════
+function getVnTime() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+}
+
+function toSqlString(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function getHomNayStr(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+// ═══════════════════════════════════════════════════
+
 async function getChiNhanhNV(manhanvien) {
   await poolConnect;
   const r = await pool.request()
@@ -37,12 +55,13 @@ async function kiemTraGPS(manhanvien, latitude, longitude) {
 // ═══════════════════════════════════════════════════
 router.get('/homnay', auth, async (req, res) => {
   const { manhanvien } = req.user;
-  const now    = new Date();
-  const homNay = now.toISOString().split('T')[0];
+  const now    = getVnTime();
+  const homNay = getHomNayStr(now);
   const thang  = now.getMonth() + 1;
   const nam    = now.getFullYear();
   const dauThang  = `${nam}-${String(thang).padStart(2,'0')}-01`;
-  const cuoiThang = new Date(nam, thang, 0).toISOString().split('T')[0];
+  const cuoiThang = new Date(nam, thang, 0); 
+  const cuoiThangStr = `${nam}-${String(thang).padStart(2,'0')}-${String(cuoiThang.getDate()).padStart(2,'0')}`;
 
   try {
     await poolConnect;
@@ -55,15 +74,15 @@ router.get('/homnay', auth, async (req, res) => {
         SELECT
           RTRIM(ll.malichlam) AS malichlam,
           RTRIM(cl.tenca)     AS tenca,
-          ll.thoigianbatdau   AS batdau,
-          ll.thoigianketthuc  AS ketthuc
+          -- Ép kiểu giờ về dạng chuỗi HH:mm để không bị lỗi múi giờ
+          CONVERT(VARCHAR(5), ll.thoigianbatdau, 108) AS batdau,
+          CONVERT(VARCHAR(5), ll.thoigianketthuc, 108) AS ketthuc
         FROM Dang_ky_lich_lam dk
         JOIN Lich_lam ll ON ll.malichlam = dk.malichlam
         JOIN Ca_lam   cl ON cl.maca      = ll.maca
         WHERE dk.manhanvien = @manhanvien
           AND ll.ngay       = @homNay
       `);
-
     // Chấm công hôm nay
     let ccHomNay = null;
     if (lichResult.recordset.length > 0) {
@@ -83,7 +102,7 @@ router.get('/homnay', auth, async (req, res) => {
     const tkResult = await pool.request()
       .input('manhanvien', sql.VarChar, manhanvien)
       .input('dauThang',   sql.Date,    dauThang)
-      .input('cuoiThang',  sql.Date,    cuoiThang)
+      .input('cuoiThang',  sql.Date,    cuoiThangStr)
       .query(`
         SELECT
           COUNT(DISTINCT ll.ngay) AS soNgayLam,
@@ -102,7 +121,7 @@ router.get('/homnay', auth, async (req, res) => {
     const duKienResult = await pool.request()
       .input('manhanvien', sql.VarChar, manhanvien)
       .input('dauThang',   sql.Date,    dauThang)
-      .input('cuoiThang',  sql.Date,    cuoiThang)
+      .input('cuoiThang',  sql.Date,    cuoiThangStr)
       .query(`
         SELECT COUNT(*) AS soNgayDuKien
         FROM Dang_ky_lich_lam dk
@@ -136,8 +155,8 @@ router.get('/homnay', auth, async (req, res) => {
 router.post('/checkin', auth, async (req, res) => {
   const { manhanvien } = req.user;
   const { latitude, longitude } = req.body;
-  const now    = new Date();
-  const homNay = now.toISOString().split('T')[0];
+  const now    = getVnTime();
+  const homNay = getHomNayStr(now);
 
   try {
     await poolConnect;
@@ -171,13 +190,17 @@ router.post('/checkin', auth, async (req, res) => {
 
     const [gio, phut]      = lich.thoigianbatdau.toString().split(':').map(Number);
     const gioBD            = new Date(now); gioBD.setHours(gio, phut, 0, 0);
-    const treSoPhut        = Math.floor((now - gioBD) / 60000);
-    const trangthaicheckin = treSoPhut > 5 ? 1 : 0;
+    const treSoPhut        = Math.floor((now.getTime() - gioBD.getTime()) / 60000);
+    
+    // SỬA: Lớn hơn 0 phút là tính đi muộn
+    const trangthaicheckin = treSoPhut > 0 ? 1 : 0; 
+
+    const sqlNow = toSqlString(now);
 
     await pool.request()
       .input('manhanvien',       sql.VarChar,  manhanvien)
       .input('malichlam',        sql.VarChar,  malichlam)
-      .input('checkin',          sql.DateTime, now)
+      .input('checkin',          sql.DateTime, sqlNow) 
       .input('trangthaicheckin', sql.TinyInt,  trangthaicheckin)
       .query(`
         MERGE Cham_cong AS target
@@ -194,7 +217,7 @@ router.post('/checkin', auth, async (req, res) => {
       ? `Check-in thành công. Bạn đến muộn ${treSoPhut} phút.`
       : 'Check-in thành công. Đúng giờ!';
 
-    res.json({ message: thongBao, trangthaicheckin, thoigianCheckin: now });
+    res.json({ message: thongBao, trangthaicheckin, thoigianCheckin: sqlNow });
 
   } catch (err) {
     console.error('❌ POST checkin:', err.message);
@@ -208,8 +231,8 @@ router.post('/checkin', auth, async (req, res) => {
 router.post('/checkout', auth, async (req, res) => {
   const { manhanvien } = req.user;
   const { latitude, longitude } = req.body;
-  const now    = new Date();
-  const homNay = now.toISOString().split('T')[0];
+  const now    = getVnTime();
+  const homNay = getHomNayStr(now);
 
   try {
     await poolConnect;
@@ -232,15 +255,20 @@ router.post('/checkout', auth, async (req, res) => {
       return res.status(400).json({ message: 'Không tìm thấy ca cần checkout. Bạn đã check-out chưa?' });
 
     const cc = ccResult.recordset[0];
+    
     const [gio, phut]       = cc.thoigianketthuc.toString().split(':').map(Number);
     const gioKT             = new Date(now); gioKT.setHours(gio, phut, 0, 0);
-    const somPhut           = Math.floor((gioKT - now) / 60000);
-    const trangthaicheckout = somPhut > 5 ? 1 : 0;
+    const somPhut           = Math.floor((gioKT.getTime() - now.getTime()) / 60000);
+    
+    // SỬA: Ra trước > 0 phút là tính về sớm
+    const trangthaicheckout = somPhut > 0 ? 1 : 0; 
+
+    const sqlNow = toSqlString(now);
 
     await pool.request()
       .input('manhanvien',        sql.VarChar,  manhanvien)
       .input('malichlam',         sql.VarChar,  cc.malichlam)
-      .input('checkout',          sql.DateTime, now)
+      .input('checkout',          sql.DateTime, sqlNow)
       .input('trangthaicheckout', sql.TinyInt,  trangthaicheckout)
       .query(`
         UPDATE Cham_cong
@@ -252,7 +280,7 @@ router.post('/checkout', auth, async (req, res) => {
       ? `Check-out thành công. Bạn về sớm ${somPhut} phút.`
       : 'Check-out thành công. Đúng giờ!';
 
-    res.json({ message: thongBao, trangthaicheckout, thoigianCheckout: now });
+    res.json({ message: thongBao, trangthaicheckout, thoigianCheckout: sqlNow });
 
   } catch (err) {
     console.error('❌ POST checkout:', err.message);
@@ -278,14 +306,15 @@ router.get('/', auth, async (req, res) => {
       .input('tuNgay',     sql.Date,    tuNgay  || '2025-01-01')
       .input('denNgay',    sql.Date,    denNgay || '2099-12-31')
       .query(`
-        SELECT cc.manhanvien, nv.hoten, RTRIM(cl.tenca) AS tenca,
-          RTRIM(cc.malichlam) AS malichlam, ll.ngay,
+        SELECT dk.manhanvien, nv.hoten, RTRIM(cl.tenca) AS tenca,
+          RTRIM(dk.malichlam) AS malichlam, ll.ngay,
           ll.thoigianbatdau, ll.thoigianketthuc,
           cc.checkin, cc.checkout, cc.trangthaicheckin, cc.trangthaicheckout
-        FROM Cham_cong cc
-        JOIN Nhan_vien nv ON nv.manhanvien = cc.manhanvien
-        JOIN Lich_lam  ll ON ll.malichlam  = cc.malichlam
+        FROM Dang_ky_lich_lam dk
+        JOIN Nhan_vien nv ON nv.manhanvien = dk.manhanvien
+        JOIN Lich_lam  ll ON ll.malichlam  = dk.malichlam
         JOIN Ca_lam    cl ON cl.maca       = ll.maca
+        LEFT JOIN Cham_cong cc ON cc.manhanvien = dk.manhanvien AND cc.malichlam = dk.malichlam
         WHERE nv.machinhanh = @machinhanh
           AND ll.ngay BETWEEN @tuNgay AND @denNgay
         ORDER BY ll.ngay DESC, nv.hoten
@@ -318,24 +347,28 @@ router.put('/:manhanvien/:malichlam', auth, async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy lịch làm' });
 
     const lich  = lichResult.recordset[0];
-    const tgIn  = new Date(checkin);
-    const tgOut = checkout ? new Date(checkout) : null;
+    const tgInStr  = checkin ? toSqlString(new Date(checkin)) : null;
+    const tgOutStr = checkout ? toSqlString(new Date(checkout)) : null;
 
     const [gioBD, phutBD] = lich.thoigianbatdau.toString().split(':').map(Number);
     const [gioKT, phutKT] = lich.thoigianketthuc.toString().split(':').map(Number);
 
-    const gioVaoCa = new Date(tgIn); gioVaoCa.setHours(gioBD, phutBD, 0, 0);
-    const gioRaCa  = tgOut ? new Date(tgOut) : null;
-    if (gioRaCa) gioRaCa.setHours(gioKT, phutKT, 0, 0);
+    const tgInObj = new Date(checkin);
+    const gioVaoCa = new Date(tgInObj); gioVaoCa.setHours(gioBD, phutBD, 0, 0);
+    const trangthaicheckin  = (tgInObj - gioVaoCa) / 60000 > 0 ? 1 : 0; // Sửa > 5 thành > 0
 
-    const trangthaicheckin  = (tgIn - gioVaoCa) / 60000 > 5 ? 1 : 0;
-    const trangthaicheckout = tgOut && gioRaCa ? (gioRaCa - tgOut) / 60000 > 5 ? 1 : 0 : 0;
+    let trangthaicheckout = 0;
+    if (checkout) {
+      const tgOutObj = new Date(checkout);
+      const gioRaCa  = new Date(tgOutObj); gioRaCa.setHours(gioKT, phutKT, 0, 0);
+      trangthaicheckout = (gioRaCa - tgOutObj) / 60000 > 0 ? 1 : 0; // Sửa > 5 thành > 0
+    }
 
     await pool.request()
       .input('manhanvien',        sql.VarChar,  manhanvien)
       .input('malichlam',         sql.VarChar,  malichlam)
-      .input('checkin',           sql.DateTime, tgIn)
-      .input('checkout',          sql.DateTime, tgOut)
+      .input('checkin',           sql.DateTime, tgInStr)
+      .input('checkout',          sql.DateTime, tgOutStr)
       .input('trangthaicheckin',  sql.TinyInt,  trangthaicheckin)
       .input('trangthaicheckout', sql.TinyInt,  trangthaicheckout)
       .query(`
@@ -365,10 +398,11 @@ router.get('/lichsu', auth, async (req, res) => {
         SELECT RTRIM(cl.tenca) AS tenca, ll.ngay,
           ll.thoigianbatdau, ll.thoigianketthuc,
           cc.checkin, cc.checkout, cc.trangthaicheckin, cc.trangthaicheckout
-        FROM Cham_cong cc
-        JOIN Lich_lam ll ON ll.malichlam = cc.malichlam
+        FROM Dang_ky_lich_lam dk
+        JOIN Lich_lam ll ON ll.malichlam = dk.malichlam
         JOIN Ca_lam   cl ON cl.maca      = ll.maca
-        WHERE cc.manhanvien = @manhanvien
+        LEFT JOIN Cham_cong cc ON cc.manhanvien = dk.manhanvien AND cc.malichlam = dk.malichlam
+        WHERE dk.manhanvien = @manhanvien
         ORDER BY ll.ngay DESC
       `);
     res.json(result.recordset);
