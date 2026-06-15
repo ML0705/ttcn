@@ -9,13 +9,66 @@
    - File này chỉ còn nhiệm vụ:
        1) Dựng sidebar + header dùng chung từ MENU_CONFIG
        2) Kiểm tra đăng nhập / phân quyền trước khi hiển thị trang
-       3) Các helper UI dùng chung: modal, toast, confirm, side panel,
+       3) Gọi API có gắn token (apiFetch)
+       4) Các helper UI dùng chung: modal, toast, confirm, side panel,
           week navigator, mobile sidebar
    - GIẢ ĐỊNH: server Node.js phục vụ thư mục frontend/ làm static
-     root (xem ghi chú server.js ở cuối file). Nhờ đó các đường dẫn
-     "/employee/..." hay "/manager/..." trong MENU_CONFIG luôn đúng,
-     bất kể trang hiện tại đang nằm ở thư mục nào.
+     root (xem ghi chú server.js ở cuối file).
 =================================================================== */
+
+
+/* ---------------- 0. API BASE + apiFetch ---------------- */
+
+const API_BASE = 'http://localhost:3000/api';
+
+/**
+ * Gọi API backend có gắn sẵn token (Authorization: Bearer ...).
+ *
+ * @param {string} path   ví dụ '/calm', '/lichlam/tuan?start=2026-06-15'
+ * @param {string} method 'GET' | 'POST' | 'PUT' | 'DELETE' (default 'GET')
+ * @param {object} body   object sẽ JSON.stringify (bỏ qua nếu GET/DELETE không có body)
+ * @returns {Promise<any>} dữ liệu JSON trả về từ server
+ * @throws {Error} nếu response không ok — error.message = message từ server (hoặc text mặc định)
+ *                  error.status = HTTP status code
+ *                  Riêng 401 (token hết hạn) -> tự logout + chuyển về /login.html
+ */
+async function apiFetch(path, method = 'GET', body = null) {
+  const token = localStorage.getItem('token');
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    throw new Error('Không thể kết nối server');
+  }
+
+  // Token hết hạn / không hợp lệ -> đăng xuất luôn
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = '/login.html';
+    throw new Error('Phiên đăng nhập đã hết hạn');
+  }
+
+  // Không có nội dung trả về (ví dụ DELETE 204)
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!res.ok) {
+    const err = new Error(data?.message || 'Có lỗi xảy ra');
+    err.status = res.status;
+    err.data   = data;
+    throw err;
+  }
+
+  return data;
+}
 
 
 /* ---------------- 1. CẤU HÌNH MENU DÙNG CHUNG CHO 2 ROLE ---------------- */
@@ -71,6 +124,7 @@ const ICON_SVG = {
   '👥': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>`,
   '🗓️': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
 };
+
 /* ---------------- 2. DỰNG SIDEBAR ---------------- */
 
 function renderSidebar(role) {
@@ -174,32 +228,28 @@ function renderHeader(role, user) {
 
 
 /* ---------------- 4. ĐĂNG NHẬP / PHÂN QUYỀN ----------------
-   Đây là điểm tích hợp API auth (Giai đoạn 3, bước 1).
-   - Hiện tại: dùng "mockUser" trong localStorage để dựng & test
-     sidebar/giao diện khi backend chưa xong.
-   - Khi backend xong: xoá nhánh mockUser, bật đoạn fetch thật.
+   - login.html lưu vào localStorage: token, vaiTro ('manager'|'employee'),
+     hoten, machinhanh, manhanvien (xem login.html).
+   - getCurrentUser() gọi GET /api/auth/me (gắn token) để lấy đầy đủ
+     thông tin (email, sodienthoai, tenchinhanh, tenloainhanvien...)
+     và field "role" ('quanly'|'nhanvien') dùng cho MENU_CONFIG.
 ------------------------------------------------------------- */
 
 async function getCurrentUser() {
   const token = localStorage.getItem('token');
   if (!token) return null;
 
-  /* --- TẠM THỜI (chưa có API /api/auth/me) --- */
-  const mock = localStorage.getItem('mockUser');
-  if (mock) return JSON.parse(mock);
-
-  /* --- KHI BACKEND XONG: bỏ comment đoạn dưới, xoá đoạn mock trên --- */
-  // try {
-  //   const res = await fetch('/api/auth/me', {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   });
-  //   if (!res.ok) return null;
-  //   return await res.json();
-  // } catch {
-  //   return null;
-  // }
-
-  return null;
+  try {
+    const user = await apiFetch('/auth/me');
+    // user = { manhanvien, hoten, email, sodienthoai, machinhanh,
+    //          tenchinhanh, maloainhanvien, tenloainhanvien,
+    //          tenchucvu, vaiTro, role }
+    return user;
+  } catch (err) {
+    // Token hết hạn -> apiFetch đã tự logout + redirect, không cần làm thêm
+    // Lỗi khác (server lỗi, mất mạng) -> coi như chưa đăng nhập
+    return null;
+  }
 }
 
 /**
@@ -251,7 +301,7 @@ function toggleDropdown(id) {
   });
   document.getElementById(id)?.classList.toggle('open');
 }
- 
+
 // Đóng dropdown khi bấm ra ngoài
 document.addEventListener('click', e => {
   document.querySelectorAll('.notif-wrap').forEach(wrap => {

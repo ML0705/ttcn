@@ -1,120 +1,155 @@
 /* =====================================================
    taikhoan.js — logic trang Quản lý tài khoản
-   Phụ thuộc: shared.js (đã load trước)
-
-   KHI BACKEND XONG: thay các khối "TODO (backend)"
-   bằng fetch('/api/taikhoan/...') tương ứng.
+   Phụ thuộc: shared.js (đã load trước, chứa apiFetch, showToast, openModal, v.v.)
 ===================================================== */
 
-/* ── Màu avatar theo tên ── */
+/* ── Cấu hình màu sắc avatar ── */
 const AVATAR_COLORS = [
   '#1D9E75','#2980B9','#8B5CF6','#E74C3C',
   '#F39C12','#16A085','#D35400','#2C3E50',
 ];
+
 function avatarColor(name = '') {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
+
 function initials(name = '') {
-  return name.split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase();
+  return (name||'?').split(' ').map(w => w[0]).filter(Boolean).slice(-2).join('').toUpperCase();
 }
-
-/* ── Mock branches (đồng bộ với chinhanh.js nếu dùng chung) ── */
-const mockChinhanh = [
-  { machinhanh: 'CN01', tenchinhanh: 'Chi nhánh Hai Bà Trưng' },
-  { machinhanh: 'CN02', tenchinhanh: 'Chi nhánh Hoàn Kiếm' },
-  { machinhanh: 'CN03', tenchinhanh: 'Chi nhánh Cầu Giấy' },
-];
-
-/* ── Mock accounts ── */
-let mockAccounts = [
-  { manhanvien:'NVF0001', hoten:'Nguyễn Văn An',   email:'an.nv@hygge.vn',   sodienthoai:'0901000001', loai:'fulltime', machinhanh:'CN01', tenchinhanh:'Hai Bà Trưng', chucvu:'Quản lý',           trangthaikhoa:0 },
-  { manhanvien:'NVF0002', hoten:'Trần Thị Bình',   email:'binh.tt@hygge.vn', sodienthoai:'0901000002', loai:'fulltime', machinhanh:'CN01', tenchinhanh:'Hai Bà Trưng', chucvu:'Thu ngân',           trangthaikhoa:0 },
-  { manhanvien:'NVP0001', hoten:'Hoàng Văn Cường', email:'cuong.hv@hygge.vn',sodienthoai:'0901000003', loai:'parttime', machinhanh:'CN01', tenchinhanh:'Hai Bà Trưng', chucvu:'Nhân viên bán hàng', trangthaikhoa:0 },
-  { manhanvien:'NVP0002', hoten:'Ngô Văn Minh',    email:'minh.nv@hygge.vn', sodienthoai:'0901000004', loai:'parttime', machinhanh:'CN03', tenchinhanh:'Cầu Giấy',     chucvu:'Nhân viên bán hàng', trangthaikhoa:1 },
-  { manhanvien:'NVF0003', hoten:'Lê Thị Dung',     email:'dung.lt@hygge.vn', sodienthoai:'0901000005', loai:'fulltime', machinhanh:'CN02', tenchinhanh:'Hoàn Kiếm',    chucvu:'Trưởng ca',          trangthaikhoa:0 },
-  { manhanvien:'NVP0003', hoten:'Phạm Gia Dũng',   email:'dung.pg@hygge.vn', sodienthoai:'0901000006', loai:'parttime', machinhanh:'CN02', tenchinhanh:'Hoàn Kiếm',    chucvu:'Nhân viên bán hàng', trangthaikhoa:0 },
-];
 
 /* ── State ── */
+let currentAccounts = [];
+let danhSachChiNhanh = [];
+let danhSachChucVu = [];
+let danhSachLoaiNV = [];
+
 let _activeTab  = 'all';
 let _editingId  = null;
-let _tkCb  = null;  
+let _actionCb   = null;  
 
 /* ══════════════════════════════════════════
-   INIT
+   FETCH DATA TỰ ĐỘNG TỪ API DANH MỤC DB
 ══════════════════════════════════════════ */
-function initTaiKhoan() {
-  populateChinhhanhSelects();
-  renderAll();
+async function loadChiNhanh() {
+  try {
+    const res = await apiFetch('/chinhanh');
+    danhSachChiNhanh = res.data || res || []; 
+    populateChinhhanhSelects();
+  } catch (err) {
+    console.error('Lỗi load chi nhánh:', err);
+  }
 }
 
-function populateChinhhanhSelects() {
-  ['filter-cn', 'f-chinhanh'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const isFilter = id === 'filter-cn';
-    const placeholder = isFilter
-      ? '<option value="">Chi nhánh: Tất cả</option>'
-      : '<option value="">-- Chọn chi nhánh --</option>';
-    el.innerHTML = placeholder +
-      mockChinhanh.map(cn =>
-        `<option value="${cn.machinhanh}">${cn.tenchinhanh}</option>`
-      ).join('');
-  });
-  /* TODO (backend): fetch GET /api/chinhanh → populate */
+async function loadChucVu() {
+  try {
+    const res = await apiFetch('/taikhoan/chucvu');
+    danhSachChucVu = res.data || res || [];
+    populateChucVuSelects();
+  } catch (err) {
+    console.error('Lỗi load chức vụ:', err);
+  }
+}
+
+async function loadLoaiNhanVien() {
+  try {
+    const res = await apiFetch('/taikhoan/loainhanvien');
+    danhSachLoaiNV = res.data || res || [];
+    populateLoaiNVSelects();
+  } catch (err) {
+    console.error('Lỗi load loại NV:', err);
+  }
+}
+
+async function loadAccounts() {
+  try {
+    const res = await apiFetch('/taikhoan');
+    currentAccounts = res.data || res || [];
+    renderAll();
+  } catch (err) {
+    console.error('Lỗi load tài khoản:', err);
+    showToast('Không thể tải danh sách tài khoản', 'error');
+  }
 }
 
 /* ══════════════════════════════════════════
-   RENDER
+   POPULATE OPTIONS VÀO HTML
+══════════════════════════════════════════ */
+function populateChinhhanhSelects() {
+  // Bây giờ chỉ còn đổ dữ liệu vào ô Chọn chi nhánh trong Form thêm/sửa
+  const el = document.getElementById('f-chinhanh');
+  if (!el) return;
+  el.innerHTML = '<option value="">-- Chọn chi nhánh --</option>' + 
+    danhSachChiNhanh.map(cn => `<option value="${cn.machinhanh}">${cn.tenchinhanh}</option>`).join('');
+}
+
+function populateChucVuSelects() {
+  const el = document.getElementById('f-chucvu');
+  if (!el) return;
+  el.innerHTML = danhSachChucVu.map(cv => 
+    `<option value="${cv.machucvu}">${cv.tenchucvu}</option>`
+  ).join('');
+}
+
+function populateLoaiNVSelects() {
+  const formEl = document.getElementById('f-loai');
+  if (formEl) {
+    formEl.innerHTML = danhSachLoaiNV.map(l => 
+      `<option value="${l.maloainhanvien}">${l.tenloainhanvien}</option>`
+    ).join('');
+  }
+}
+
+/* ══════════════════════════════════════════
+   RENDER VÀ LỌC DỮ LIỆU ĐỘNG
 ══════════════════════════════════════════ */
 function renderAll() {
-  updateStats();
-  updateTabCounts();
   applyFilters();
 }
 
-function updateStats() {
-  const total    = mockAccounts.length;
-  const fulltime = mockAccounts.filter(a => a.loai === 'fulltime').length;
-  const parttime = mockAccounts.filter(a => a.loai === 'parttime').length;
-  const locked   = mockAccounts.filter(a => a.trangthaikhoa === 1).length;
-  document.getElementById('s-total').textContent    = total;
-  document.getElementById('s-fulltime').textContent = fulltime;
-  document.getElementById('s-parttime').textContent = parttime;
-  document.getElementById('s-locked').textContent   = locked;
+function updateStats(list) {
+  const total    = list.length;
+  const fulltime = list.filter(a => a.maloainhanvien === 'LNV01').length;
+  const parttime = list.filter(a => a.maloainhanvien === 'LNV02').length;
+  
+  const elTotal = document.getElementById('s-total');
+  const elFull  = document.getElementById('s-fulltime');
+  const elPart  = document.getElementById('s-parttime');
+
+  if (elTotal) elTotal.textContent = total;
+  if (elFull)  elFull.textContent  = fulltime;
+  if (elPart)  elPart.textContent  = parttime;
 }
 
-function updateTabCounts() {
-  const all      = mockAccounts.length;
-  const fulltime = mockAccounts.filter(a => a.loai === 'fulltime').length;
-  const parttime = mockAccounts.filter(a => a.loai === 'parttime').length;
-  const locked   = mockAccounts.filter(a => a.trangthaikhoa === 1).length;
-  document.getElementById('tc-all').textContent      = all;
-  document.getElementById('tc-fulltime').textContent = fulltime;
-  document.getElementById('tc-parttime').textContent = parttime;
-  document.getElementById('tc-locked').textContent   = locked;
+function updateTabCounts(list) {
+  const tcAll  = document.getElementById('tc-all');
+  const tcFull = document.getElementById('tc-fulltime');
+  const tcPart = document.getElementById('tc-parttime');
+
+  if (tcAll)  tcAll.textContent  = list.length;
+  if (tcFull) tcFull.textContent = list.filter(a => a.maloainhanvien === 'LNV01').length;
+  if (tcPart) tcPart.textContent = list.filter(a => a.maloainhanvien === 'LNV02').length;
 }
 
 function applyFilters() {
-  const q    = document.getElementById('search-input').value.toLowerCase().trim();
-  const loai = document.getElementById('filter-loai').value;
-  const cn   = document.getElementById('filter-cn').value;
+  const q  = document.getElementById('search-input').value.toLowerCase().trim();
 
-  let list = mockAccounts.filter(a => {
-    const matchQ  = !q || a.hoten.toLowerCase().includes(q) || a.manhanvien.toLowerCase().includes(q);
-    const matchL  = !loai || a.loai === loai;
-    const matchCN = !cn   || a.machinhanh === cn;
-    return matchQ && matchL && matchCN;
+  // B1: Lọc nền tảng (bây giờ chỉ còn lọc theo ô Tìm kiếm)
+  let baseList = currentAccounts.filter(a => {
+    return !q || (a.hoten && a.hoten.toLowerCase().includes(q)) || (a.manhanvien && a.manhanvien.toLowerCase().includes(q));
   });
 
-  // Tab filter (nhân với filter trên)
-  if (_activeTab === 'fulltime') list = list.filter(a => a.loai === 'fulltime');
-  if (_activeTab === 'parttime') list = list.filter(a => a.loai === 'parttime');
-  if (_activeTab === 'locked')   list = list.filter(a => a.trangthaikhoa === 1);
+  // B2: Cập nhật con số hiển thị động
+  updateStats(baseList);
+  updateTabCounts(baseList);
 
-  renderTable(list);
+  // B3: Lọc chi tiết theo Tab hiện tại để in ra bảng
+  let tableList = baseList;
+  if (_activeTab === 'fulltime') tableList = baseList.filter(a => a.maloainhanvien === 'LNV01');
+  if (_activeTab === 'parttime') tableList = baseList.filter(a => a.maloainhanvien === 'LNV02');
+
+  renderTable(tableList);
 }
 
 function renderTable(list) {
@@ -123,24 +158,19 @@ function renderTable(list) {
 
   if (list.length === 0) {
     tbody.innerHTML = '';
-    empty.style.display = 'block';
+    if (empty) empty.style.display = 'block';
     return;
   }
-  empty.style.display = 'none';
+  if (empty) empty.style.display = 'none';
 
   tbody.innerHTML = list.map(a => {
     const color      = avatarColor(a.hoten);
     const ini        = initials(a.hoten);
-    const isLocked   = a.trangthaikhoa === 1;
-    const loaiLabel  = a.loai === 'fulltime' ? 'Full-time' : 'Part-time';
-    const loaiCls    = a.loai === 'fulltime' ? 'badge-fulltime' : 'badge-parttime';
-    const statusCls  = isLocked ? 'badge-locked' : 'badge-ok';
-    const statusText = isLocked ? 'Bị khóa' : 'Bình thường';
-    const lockTitle  = isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản';
-    const lockCls    = isLocked ? 'is-locked' : '';
-    const lockIcon   = isLocked
-      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+    
+    const loaiLabel  = a.tenloainhanvien || 'Không xác định';
+    const chucvuTen  = a.tenchucvu || 'Chưa phân công';
+    const tenCN      = a.tenchinhanh || 'Không xác định';
+    const loaiCls    = a.maloainhanvien === 'LNV01' ? 'badge-fulltime' : 'badge-parttime';
 
     return `
     <tr>
@@ -149,24 +179,26 @@ function renderTable(list) {
           <div class="nv-avatar" style="background:${color}">${ini}</div>
           <div class="nv-info">
             <span class="nv-name">${a.hoten}</span>
-            <span class="nv-role">${a.chucvu}</span>
+            <span class="nv-role">${chucvuTen}</span>
           </div>
         </div>
       </td>
       <td style="font-family:var(--font-mono); font-size:12px; color:var(--ink-soft);">${a.manhanvien}</td>
-      <td class="hide-mobile" style="font-size:12px; color:var(--ink-soft);">${a.tenchinhanh}</td>
+      <td class="hide-mobile" style="font-size:12px; color:var(--ink-soft);">${tenCN}</td>
       <td><span class="badge ${loaiCls}">${loaiLabel}</span></td>
-      <td><span class="badge ${statusCls}">${statusText}</span></td>
       <td>
-        <div class="action-wrap">
+        <div class="action-wrap" style="justify-content: flex-end;">
           <button class="btn-icon" title="Chỉnh sửa" onclick="openEditPanel('${a.manhanvien}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="btn-lock ${lockCls}" title="${lockTitle}" onclick="askToggleLock('${a.manhanvien}')">
-            ${lockIcon}
+          <button class="btn-icon btn-danger" title="Xóa tài khoản" onclick="askDelete('${a.manhanvien}')" style="color: var(--danger-color);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
           </button>
         </div>
       </td>
@@ -174,9 +206,7 @@ function renderTable(list) {
   }).join('');
 }
 
-/* ══════════════════════════════════════════
-   TABS
-══════════════════════════════════════════ */
+/* ── CHUYỂN TAB ── */
 function switchTab(tab, btn) {
   _activeTab = tab;
   document.querySelectorAll('#tabs .tab-btn').forEach(b => b.classList.remove('active'));
@@ -184,9 +214,7 @@ function switchTab(tab, btn) {
   applyFilters();
 }
 
-/* ══════════════════════════════════════════
-   SIDE PANEL: Thêm / Sửa
-══════════════════════════════════════════ */
+/* ── SIDE PANEL: THÊM / SỬA ── */
 function openAddPanel() {
   _editingId = null;
   document.getElementById('panel-title').textContent = 'Thêm tài khoản';
@@ -197,17 +225,18 @@ function openAddPanel() {
 }
 
 function openEditPanel(id) {
-  const a = mockAccounts.find(x => x.manhanvien === id);
+  const a = currentAccounts.find(x => x.manhanvien === id);
   if (!a) return;
   _editingId = id;
   document.getElementById('panel-title').textContent = 'Chỉnh sửa tài khoản';
   clearForm();
   document.getElementById('f-hoten').value    = a.hoten;
   document.getElementById('f-sdt').value      = a.sodienthoai;
-  document.getElementById('f-email').value    = a.email;
-  document.getElementById('f-loai').value     = a.loai;
+  document.getElementById('f-email').value    = a.email || '';
+  document.getElementById('f-loai').value     = a.maloainhanvien;     
+  document.getElementById('f-chucvu').value   = a.machucvu;   
   document.getElementById('f-chinhanh').value = a.machinhanh;
-  document.getElementById('f-chucvu').value   = a.chucvu;
+  
   document.getElementById('pw-group').style.display = '';
   document.getElementById('pw-hint').style.display  = 'block';
   openSidePanel('acc-panel');
@@ -218,6 +247,15 @@ function clearForm() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const elCn = document.getElementById('f-chinhanh');
+  if (elCn) elCn.selectedIndex = 0;
+  
+  const elLoai = document.getElementById('f-loai');
+  if (elLoai) elLoai.selectedIndex = 0;
+
+  const elChucVu = document.getElementById('f-chucvu');
+  if (elChucVu) elChucVu.selectedIndex = 0;
+
   ['e-hoten','e-sdt','e-email','e-matkhau','e-chinhanh'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
@@ -226,7 +264,7 @@ function clearForm() {
 
 function togglePw() {
   const inp = document.getElementById('f-matkhau');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
 function validateForm() {
@@ -243,7 +281,7 @@ function validateForm() {
 
   if (!/^\d{10}$/.test(sdt)) { setErr('e-sdt','Số điện thoại phải gồm đúng 10 chữ số'); ok = false; }
   else {
-    const dup = mockAccounts.find(a => a.sodienthoai === sdt && a.manhanvien !== _editingId);
+    const dup = currentAccounts.find(a => a.sodienthoai === sdt && a.manhanvien !== _editingId);
     if (dup) { setErr('e-sdt','Số điện thoại đã được dùng bởi tài khoản khác'); ok = false; }
     else setErr('e-sdt','');
   }
@@ -269,75 +307,101 @@ function setErr(id, msg) {
   if (el) el.textContent = msg;
 }
 
-function saveAccount() {
+async function saveAccount() {
   if (!validateForm()) return;
 
-  const cnEl  = document.getElementById('f-chinhanh');
-  const cnTen = cnEl.options[cnEl.selectedIndex]?.text || '';
-
   const data = {
-    hoten:        document.getElementById('f-hoten').value.trim(),
-    sodienthoai:  document.getElementById('f-sdt').value.trim(),
-    email:        document.getElementById('f-email').value.trim(),
-    loai:         document.getElementById('f-loai').value,
-    machinhanh:   document.getElementById('f-chinhanh').value,
-    tenchinhanh:  cnTen,
-    chucvu:       document.getElementById('f-chucvu').value,
+    hoten:          document.getElementById('f-hoten').value.trim(),
+    sodienthoai:    document.getElementById('f-sdt').value.trim(),
+    email:          document.getElementById('f-email').value.trim(),
+    maloainhanvien: document.getElementById('f-loai').value,     
+    machucvu:       document.getElementById('f-chucvu').value,   
+    machinhanh:     document.getElementById('f-chinhanh').value,
   };
 
-  if (_editingId) {
-    const idx = mockAccounts.findIndex(a => a.manhanvien === _editingId);
-    if (idx !== -1) mockAccounts[idx] = { ...mockAccounts[idx], ...data };
-    showToast('Cập nhật tài khoản thành công', 'success');
-    /* TODO (backend): fetch PUT /api/taikhoan/:id, body = data */
-  } else {
-    const isFulltime = data.loai === 'fulltime';
-    const prefix     = isFulltime ? 'NVF' : 'NVP';
-    const sameType   = mockAccounts.filter(a => a.loai === data.loai).length;
-    const newId      = prefix + String(sameType + 1).padStart(4, '0');
-    mockAccounts.push({ manhanvien: newId, trangthaikhoa: 0, ...data });
-    showToast('Thêm tài khoản thành công', 'success');
-    /* TODO (backend): fetch POST /api/taikhoan, body = data */
-  }
+  const matkhauInp = document.getElementById('f-matkhau').value;
 
-  closeSidePanel('acc-panel');
-  renderAll();
+  try {
+    if (_editingId) {
+      if (matkhauInp) data.matkhauMoi = matkhauInp; 
+      await apiFetch(`/taikhoan/${_editingId}`, 'PUT', data);
+      showToast('Cập nhật tài khoản thành công', 'success');
+    } else {
+      data.matkhau = matkhauInp;
+      await apiFetch('/taikhoan', 'POST', data);
+      showToast('Thêm tài khoản thành công', 'success');
+    }
+    
+    _editingId = null; 
+    closeSidePanel('acc-panel');
+
+    // Tự động xóa ô tìm kiếm để hiện bản ghi mới (không gây lỗi sập luồng)
+    document.getElementById('search-input').value = '';
+    
+    // Đưa tab về lại Tất cả
+    _activeTab = 'all';
+    document.querySelectorAll('#tabs .tab-btn').forEach(b => {
+      if(b.getAttribute('data-tab') === 'all') b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
+    await loadAccounts(); 
+  } catch (err) {
+    console.error('Lỗi lưu tài khoản:', err);
+    showToast(err.message || 'Có lỗi xảy ra khi lưu dữ liệu', 'error');
+  }
 }
 
-/* ══════════════════════════════════════════
-   KHÓA / MỞ KHÓA
-══════════════════════════════════════════ */
-function askToggleLock(id) {
-  const a = mockAccounts.find(x => x.manhanvien === id);
+/* ── HÀNH ĐỘNG XÓA ── */
+function askDelete(id) {
+  const a = currentAccounts.find(x => x.manhanvien === id);
   if (!a) return;
-  const isLocked = a.trangthaikhoa === 1;
-  const action   = isLocked ? 'Mở khóa' : 'Khóa';
-  const icon     = isLocked ? '🔓' : '🔒';
+  
+  document.getElementById('confirm-icon').textContent  = '🗑️';
+  document.getElementById('confirm-title').textContent = 'Xóa tài khoản?';
+  document.getElementById('confirm-text').textContent  = 
+    `Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản của "${a.hoten}"? Hành động này không thể hoàn tác.`;
+  
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.textContent = 'Xóa';
+  btn.className   = 'btn btn-danger';
 
-  document.getElementById('confirm-icon').textContent  = icon;
-  document.getElementById('confirm-title').textContent = `${action} tài khoản?`;
-  document.getElementById('confirm-text').textContent  =
-    `Bạn có chắc muốn ${action.toLowerCase()} tài khoản của "${a.hoten}"?`;
-  document.getElementById('confirm-ok-btn').textContent = action;
-  document.getElementById('confirm-ok-btn').className   =
-    isLocked ? 'btn btn-success' : 'btn btn-danger';
-
-  _tkCb = () => toggleLock(id);
+  _actionCb = () => deleteAccount(id);
   openModal('confirm-modal');
 }
 
-function toggleLock(id) {
-  const a = mockAccounts.find(x => x.manhanvien === id);
-  if (!a) return;
-  a.trangthaikhoa = a.trangthaikhoa === 1 ? 0 : 1;
-  const action = a.trangthaikhoa === 1 ? 'Đã khóa' : 'Đã mở khóa';
-  showToast(`${action} tài khoản ${a.hoten}`, a.trangthaikhoa === 1 ? 'error' : 'success');
-  renderAll();
-  /* TODO (backend): fetch PATCH /api/taikhoan/:id/lock, body = { trangthaikhoa } */
+async function deleteAccount(id) {
+  try {
+    await apiFetch(`/taikhoan/${id}`, 'DELETE');
+    showToast('Xóa tài khoản thành công', 'success');
+    await loadAccounts();
+  } catch (err) {
+    console.error('Lỗi khi xóa tài khoản:', err);
+    showToast(err.message || 'Có lỗi xảy ra khi xóa', 'error');
+  }
 }
 
-/* Override confirmOk của shared.js để dùng _tkCb cục bộ */
 function confirmOk() {
   closeModal('confirm-modal');
-  if (_tkCb) { _tkCb(); _tkCb = null; }
+  if (_actionCb) { 
+    _actionCb(); 
+    _actionCb = null; 
+  }
 }
+
+/* ══════════════════════════════════════════
+   KHỞI TẠO TRANG
+══════════════════════════════════════════ */
+initLayout(['quanly']).then(async user => {
+  if (!user) return; 
+  try {
+    await Promise.all([
+      loadChiNhanh(),
+      loadChucVu(),
+      loadLoaiNhanVien(),
+      loadAccounts()
+    ]);
+  } catch (err) {
+    console.error("Lỗi khởi tạo:", err);
+  }
+});

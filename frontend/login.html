@@ -20,7 +20,6 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
 
 .auth-split { display: flex; width: 100%; min-height: 100vh; }
 
-/* Left panel – brand */
 .auth-brand {
   width: 45%; background: var(--accent); color: #fff;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -35,12 +34,23 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
 .brand-sub    { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; opacity: .6; margin-top: 4px; }
 .brand-tagline { font-size: 15px; margin-top: 32px; opacity: .8; line-height: 1.7; text-align: center; max-width: 280px; position: relative; }
 
-/* Right panel – form */
 .auth-form-wrap {
-  width: 55%; display: flex; align-items: center; justify-content: center;
+  width: 55%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 40px 60px;
+  min-height: 100vh;
+  overflow: hidden;
 }
-.auth-card  { width: 100%; max-width: 380px; }
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.08);
+}
 .auth-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
 .auth-desc  { font-size: 13px; color: var(--ink-muted); margin-bottom: 28px; }
 
@@ -68,24 +78,13 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
   width: 100%; padding: 11px; border-radius: var(--radius-sm);
   font-size: 14px; font-weight: 600; cursor: pointer; border: none;
   background: var(--accent); color: #fff; margin-top: 8px; transition: opacity .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-auth:hover { opacity: .9; }
-
-.divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
-.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.divider span { font-size: 12px; color: var(--ink-muted); }
-
-.btn-google {
-  width: 100%; padding: 10px; border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 500; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
-  display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s;
-}
-.btn-google:hover { background: var(--surface-2); }
+.btn-auth:hover:not(:disabled) { opacity: .9; }
+.btn-auth:disabled { opacity: .6; cursor: not-allowed; }
 
 .back-link { font-size: 13px; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 20px; }
 
-/* Steps / progress */
 .recovery-steps { display: flex; gap: 0; margin-bottom: 28px; position: relative; }
 .recovery-steps::before {
   content: ''; position: absolute; top: 12px; left: 0; right: 0; height: 2px;
@@ -102,15 +101,20 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
 .step-label { font-size: 10px; margin-top: 4px; color: var(--ink-muted); }
 .step-label.active { color: var(--accent); font-weight: 600; }
 
-/* OTP input */
 .otp-row { display: flex; gap: 8px; margin: 8px 0; }
 .otp-input {
-  flex: 1; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 700;
-  border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: monospace;
+  width: 42px;
+  height: 48px;
+  flex: none;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: monospace;
 }
 .otp-input:focus { border-color: var(--accent); outline: none; }
 
-/* Alert */
 .alert-error {
   background: var(--red-bg); border: 1px solid #F5B7B1;
   color: var(--red); border-radius: var(--radius-sm); padding: 10px 12px;
@@ -124,9 +128,11 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
 }
 .alert-success.show { display: block; }
 
-/* Pages */
-.auth-page { display: none; }
-.auth-page.active { display: block; }
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 640px) {
   .auth-brand { display: none; }
@@ -148,88 +154,96 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
   <!-- Form area -->
   <div class="auth-form-wrap">
 
-    <!-- LOGIN -->
-    <div class="auth-card" id="page-login" style="display:block;">
+    <!-- ═══ LOGIN ═══ -->
+    <div class="auth-card" id="page-login">
       <div class="auth-title">Chào mừng trở lại 👋</div>
       <div class="auth-desc">Đăng nhập để tiếp tục quản lý lịch làm việc.</div>
 
-      <div id="login-error" class="alert-error">Thông tin đăng nhập không chính xác. Vui lòng thử lại.</div>
+      <div id="login-error" class="alert-error"></div>
 
       <div class="form-group">
-        <label class="form-label">Email hoặc số điện thoại</label>
-        <input type="text" id="login-user" class="form-control" placeholder="Nhập email hoặc số điện thoại">
-        <div class="form-error" id="err-user">Vui lòng nhập tài khoản.</div>
+        <label class="form-label">Số điện thoại</label>
+        <input type="text" id="login-user" class="form-control" placeholder="Nhập số điện thoại" maxlength="10">
+        <div class="form-error" id="err-user">Vui lòng nhập số điện thoại.</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Mật khẩu <a class="forgot-link" onclick="showRecovery()">Quên mật khẩu?</a></label>
+        <label class="form-label">
+          Mật khẩu
+        </label>
         <div class="pw-wrap">
-          <input type="password" id="login-pw" class="form-control" placeholder="Nhập mật khẩu">
+          <input type="password" id="login-pw" class="form-control" placeholder="Nhập mật khẩu"
+                 onkeydown="if(event.key==='Enter') doLogin()">
           <button class="pw-toggle" onclick="togglePw('login-pw',this)">👁</button>
         </div>
         <div class="form-error" id="err-pw">Vui lòng nhập mật khẩu.</div>
       </div>
 
-      <button class="btn-auth" onclick="doLogin()">Đăng nhập</button>
-
-      <div class="divider"><span>hoặc đăng nhập với</span></div>
-      <button class="btn-google">
-        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.27 9.44A7.13 7.13 0 0 1 12 4.84c1.73 0 3.28.64 4.5 1.68l3.36-3.36A11.94 11.94 0 0 0 12 0C7.38 0 3.4 2.7 1.37 6.65l3.9 2.79z"/><path fill="#34A853" d="M16.04 18.01A7.06 7.06 0 0 1 12 19.16a7.13 7.13 0 0 1-6.73-4.72L1.37 17.35A11.94 11.94 0 0 0 12 24c2.93 0 5.73-1.05 7.86-2.99l-3.82-2.99z"/><path fill="#4A90D9" d="M23.49 12.27c0-.79-.07-1.56-.2-2.27H12v4.29h6.45a5.51 5.51 0 0 1-2.38 3.62l3.82 2.99C21.98 18.92 23.49 15.82 23.49 12.27z"/><path fill="#FBBC05" d="M5.27 14.44a7.18 7.18 0 0 1 0-4.88l-3.9-2.79A11.96 11.96 0 0 0 0 12c0 1.93.46 3.76 1.27 5.35l3.9-2.91z"/></svg>
-        Đăng nhập với Google
+      <button class="btn-auth" id="btn-login" onclick="doLogin()">
+        <span class="spinner" id="login-spinner"></span>
+        Đăng nhập
       </button>
     </div>
 
-    <!-- RECOVERY -->
+    <!-- ═══ RECOVERY ═══ -->
     <div class="auth-card" id="page-recovery" style="display:none;">
       <a class="back-link" onclick="showLogin()">← Quay lại đăng nhập</a>
       <div class="auth-title">Khôi phục tài khoản</div>
-      <div class="auth-desc">Nhập email hoặc số điện thoại để nhận hướng dẫn đặt lại mật khẩu.</div>
+      <div class="auth-desc">Nhập số điện thoại để nhận mã xác nhận.</div>
 
       <div class="recovery-steps">
         <div class="step-item">
           <div class="step-dot active" id="step1-dot">1</div>
-          <div class="step-label active">Xác minh</div>
+          <div class="step-label active" id="step1-label">Xác minh</div>
         </div>
         <div class="step-item">
           <div class="step-dot" id="step2-dot">2</div>
-          <div class="step-label">Nhập OTP</div>
+          <div class="step-label" id="step2-label">Nhập OTP</div>
         </div>
         <div class="step-item">
           <div class="step-dot" id="step3-dot">3</div>
-          <div class="step-label">Mật khẩu mới</div>
+          <div class="step-label" id="step3-label">Mật khẩu mới</div>
         </div>
       </div>
 
-      <!-- Step 1 -->
+      <!-- Step 1: Nhập SĐT -->
       <div id="recovery-step1">
+        <div id="rec-error-1" class="alert-error"></div>
         <div class="form-group">
-          <label class="form-label">Email hoặc số điện thoại</label>
-          <input type="text" id="rec-contact" class="form-control" placeholder="Nhập email hoặc SĐT của bạn">
-          <div class="form-error show" id="err-contact" style="display:none">Tài khoản không tồn tại.</div>
+          <label class="form-label">Số điện thoại</label>
+          <input type="text" id="rec-sdt" class="form-control" placeholder="Nhập SĐT tài khoản" maxlength="10">
+          <div class="form-error" id="err-contact">Tài khoản không tồn tại.</div>
         </div>
-        <button class="btn-auth" onclick="sendOTP()">Gửi hướng dẫn</button>
+        <button class="btn-auth" id="btn-send-otp" onclick="sendOTP()">
+          <span class="spinner" id="otp-spinner"></span>
+          Gửi mã xác nhận
+        </button>
       </div>
 
-      <!-- Step 2 -->
+      <!-- Step 2: Nhập OTP -->
       <div id="recovery-step2" style="display:none;">
-        <div class="auth-desc">Nhập mã xác nhận đã gửi tới số điện thoại của bạn.</div>
+        <div class="auth-desc" id="otp-desc"></div>
+        <div id="rec-error-2" class="alert-error"></div>
         <div class="otp-row">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,0)">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,1)">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,2)">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,3)">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,4)">
-          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,5)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,0)" onkeydown="backOtp(event,0)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,1)" onkeydown="backOtp(event,1)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,2)" onkeydown="backOtp(event,2)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,3)" onkeydown="backOtp(event,3)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,4)" onkeydown="backOtp(event,4)">
+          <input type="text" maxlength="1" class="otp-input" oninput="moveOtp(this,5)" onkeydown="backOtp(event,5)">
         </div>
-        <div id="err-otp" class="alert-error">Mã xác nhận không chính xác.</div>
-        <button class="btn-auth" onclick="verifyOTP()">Xác nhận mã</button>
+        <button class="btn-auth" id="btn-verify-otp" onclick="verifyOTP()">
+          <span class="spinner" id="verify-spinner"></span>
+          Xác nhận mã
+        </button>
         <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--ink-muted)">
-          Chưa nhận được mã? <a style="color:var(--accent);cursor:pointer" onclick="sendOTP()">Gửi lại</a>
+          Chưa nhận được mã?
+          <a style="color:var(--accent);cursor:pointer" onclick="sendOTP(true)">Gửi lại</a>
         </div>
       </div>
 
-      <!-- Step 3 -->
+      <!-- Step 3: Mật khẩu mới -->
       <div id="recovery-step3" style="display:none;">
-        <div id="rec-success" class="alert-success">✓ Mở khóa tài khoản thành công! Hãy đăng nhập lại.</div>
+        <div id="rec-error-3" class="alert-error"></div>
         <div class="form-group">
           <label class="form-label">Mật khẩu mới</label>
           <div class="pw-wrap">
@@ -240,95 +254,404 @@ body { font-family: var(--font); background: var(--surface-2); min-height: 100vh
         </div>
         <div class="form-group">
           <label class="form-label">Xác nhận mật khẩu</label>
-          <input type="password" id="confirm-pw" class="form-control" placeholder="Nhập lại mật khẩu mới">
+          <div class="pw-wrap">
+            <input type="password" id="confirm-pw" class="form-control" placeholder="Nhập lại mật khẩu mới">
+            <button class="pw-toggle" onclick="togglePw('confirm-pw',this)">👁</button>
+          </div>
           <div class="form-error" id="err-confirmpw">Mật khẩu không khớp.</div>
         </div>
-        <button class="btn-auth" onclick="resetPw()">Xác nhận</button>
+        <button class="btn-auth" id="btn-reset" onclick="resetPw()">
+          <span class="spinner" id="reset-spinner"></span>
+          Xác nhận
+        </button>
       </div>
-    </div>
 
+    </div>
   </div>
 </div>
 
 <script>
-function showRecovery() {
-  document.getElementById('page-login').style.display = 'none';
-  document.getElementById('page-recovery').style.display = 'block';
+const API = 'http://localhost:3000/api';
+
+// ─── Helpers ───────────────────────────────────────
+function setLoading(btnId, spinnerId, loading) {
+  const btn = document.getElementById(btnId);
+  const sp  = document.getElementById(spinnerId);
+  btn.disabled      = loading;
+  sp.style.display  = loading ? 'block' : 'none';
 }
-function showLogin() {
-  document.getElementById('page-login').style.display = 'block';
-  document.getElementById('page-recovery').style.display = 'none';
+function showAlert(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideAlert(id) {
+  document.getElementById(id).classList.remove('show');
 }
 function togglePw(id, btn) {
   const el = document.getElementById(id);
   el.type = el.type === 'password' ? 'text' : 'password';
   btn.textContent = el.type === 'password' ? '👁' : '🙈';
 }
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pw').value;
-  let ok = true;
-  if (!u) { document.getElementById('err-user').classList.add('show'); ok = false; }
-  else     { document.getElementById('err-user').classList.remove('show'); }
-  if (!p) { document.getElementById('err-pw').classList.add('show'); ok = false; }
-  else    { document.getElementById('err-pw').classList.remove('show'); }
-  if (!ok) return;
-  // Demo: admin credentials
-  if ((u === 'admin' || u === 'quan.ly@hygge.vn') && p === 'Admin123') {
-    window.location.href = 'manager.html';
-  } else if ((u === 'nv01' || u === 'nv@hygge.vn') && p === 'Nv12345!') {
-    window.location.href = 'employee.html';
-  } else {
-    document.getElementById('login-error').classList.add('show');
-  }
+function showRecovery() {
+  document.getElementById('page-login').style.display    = 'none';
+  document.getElementById('page-recovery').style.display = 'block';
 }
-function sendOTP() {
-  const c = document.getElementById('rec-contact').value.trim();
-  if (!c) { document.getElementById('err-contact').style.display = 'block'; return; }
-  document.getElementById('err-contact').style.display = 'none';
-  document.getElementById('recovery-step1').style.display = 'none';
-  document.getElementById('recovery-step2').style.display = 'block';
-  document.getElementById('step1-dot').classList.remove('active');
-  document.getElementById('step1-dot').classList.add('done');
-  document.getElementById('step1-dot').textContent = '✓';
-  document.getElementById('step2-dot').classList.add('active');
-}
-function moveOtp(el, idx) {
-  if (el.value && idx < 5) {
-    document.querySelectorAll('.otp-input')[idx+1].focus();
-  }
-}
-function verifyOTP() {
-  const vals = [...document.querySelectorAll('.otp-input')].map(i => i.value).join('');
-  if (vals !== '123456' && vals.length < 6) { document.getElementById('err-otp').classList.add('show'); return; }
-  document.getElementById('err-otp').classList.remove('show');
+function showLogin() {
+  document.getElementById('page-login').style.display    = 'block';
+  document.getElementById('page-recovery').style.display = 'none';
+  // Reset recovery về step 1
+  document.getElementById('recovery-step1').style.display = 'block';
   document.getElementById('recovery-step2').style.display = 'none';
-  document.getElementById('recovery-step3').style.display = 'block';
-  document.getElementById('step2-dot').classList.remove('active');
-  document.getElementById('step2-dot').classList.add('done');
-  document.getElementById('step2-dot').textContent = '✓';
-  document.getElementById('step3-dot').classList.add('active');
+  document.getElementById('recovery-step3').style.display = 'none';
+  ['step1','step2','step3'].forEach(s => {
+    document.getElementById(s+'-dot').className   = 'step-dot';
+    document.getElementById(s+'-label').className = 'step-label';
+  });
+  document.getElementById('step1-dot').classList.add('active');
+  document.getElementById('step1-label').classList.add('active');
 }
-function resetPw() {
+
+// ─── Đăng nhập ─────────────────────────────────────
+async function doLogin() {
+
+  const sdt = document.getElementById('login-user').value.trim();
+  const pw  = document.getElementById('login-pw').value;
+
+  let ok = true;
+
+  hideAlert('login-error');
+
+  if (!sdt) {
+    document.getElementById('err-user')
+      .classList.add('show');
+    ok = false;
+  }
+  else {
+    document.getElementById('err-user')
+      .classList.remove('show');
+  }
+
+
+  if (!pw) {
+    document.getElementById('err-pw')
+      .classList.add('show');
+    ok = false;
+  }
+  else {
+    document.getElementById('err-pw')
+      .classList.remove('show');
+  }
+
+
+  if (!ok) return;
+
+
+  setLoading(
+    'btn-login',
+    'login-spinner',
+    true
+  );
+
+
+  try {
+
+    const res = await fetch(
+      `${API}/auth/login`,
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+          tendangnhap:sdt,
+          matkhau:pw
+        })
+      }
+    );
+
+
+    const data = await res.json();
+
+
+
+    // tài khoản bị khóa
+    if (data.bikikhoa) {
+
+      const box =
+        document.getElementById('login-error');
+
+
+      box.innerHTML = `
+        ${data.message}
+        <br>
+
+        <button
+          onclick="showRecovery()"
+          style="
+          margin-top:10px;
+          background:none;
+          border:none;
+          color:var(--red);
+          font-weight:600;
+          cursor:pointer">
+
+          Cấp lại mật khẩu
+
+        </button>
+      `;
+
+
+      box.classList.add('show');
+
+      return;
+    }
+
+
+
+    if (!res.ok) {
+
+
+      if(data.conLai !== undefined){
+
+        showAlert(
+          'login-error',
+          `${data.message}.
+          Còn ${data.conLai} lần thử.`
+        );
+
+      }
+      else {
+
+        showAlert(
+          'login-error',
+          data.message ||
+          'Đăng nhập thất bại'
+        );
+
+      }
+
+      return;
+    }
+
+
+
+    localStorage.setItem(
+      'token',
+      data.token
+    );
+
+    localStorage.setItem(
+      'vaiTro',
+      data.vaiTro
+    );
+
+    localStorage.setItem(
+      'hoten',
+      data.hoten
+    );
+
+    localStorage.setItem(
+      'machinhanh',
+      data.machinhanh
+    );
+
+    localStorage.setItem(
+      'manhanvien',
+      data.manhanvien
+    );
+
+
+
+    if(data.vaiTro==='manager'){
+
+      window.location.href =
+      'manager/lichlam.html';
+
+    }
+    else{
+
+      window.location.href =
+      'employee/dashboard.html';
+
+    }
+
+
+
+  }
+  catch(err){
+
+    showAlert(
+      'login-error',
+      'Không thể kết nối server'
+    );
+
+  }
+  finally{
+
+    setLoading(
+      'btn-login',
+      'login-spinner',
+      false
+    );
+
+  }
+
+}
+
+// ─── Khôi phục: Step 1 — Gửi OTP ──────────────────
+async function sendOTP(resend = false) {
+  const sdt = document.getElementById('rec-sdt').value.trim();
+  if (!sdt) {
+    document.getElementById('err-contact').classList.add('show');
+    return;
+  }
+  document.getElementById('err-contact').classList.remove('show');
+  hideAlert('rec-error-1');
+
+  setLoading('btn-send-otp', 'otp-spinner', true);
+
+  try {
+    const res  = await fetch(`${API}/auth/forgot`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sdt })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        document.getElementById('err-contact').classList.add('show');
+      } else {
+        showAlert('rec-error-1', data.message);
+      }
+      return;
+    }
+
+    // Chuyển sang step 2
+    if (!resend) {
+      document.getElementById('recovery-step1').style.display = 'none';
+      document.getElementById('recovery-step2').style.display = 'block';
+      document.getElementById('step1-dot').className   = 'step-dot done';
+      document.getElementById('step1-dot').textContent = '✓';
+      document.getElementById('step1-label').className = 'step-label';
+      document.getElementById('step2-dot').classList.add('active');
+      document.getElementById('step2-label').classList.add('active');
+    }
+
+    document.getElementById('otp-desc').textContent =
+      `Đã gửi mã OTP về SĐT ${sdt} (demo: 123456)`;
+
+    // Clear ô OTP
+    document.querySelectorAll('.otp-input').forEach(i => i.value = '');
+    document.querySelectorAll('.otp-input')[0].focus();
+    hideAlert('rec-error-2');
+
+  } catch {
+    showAlert('rec-error-1', 'Không thể kết nối server.');
+  } finally {
+    setLoading('btn-send-otp', 'otp-spinner', false);
+  }
+}
+
+// ─── Khôi phục: Step 2 — Xác nhận OTP ─────────────
+async function verifyOTP() {
+  const otp = [...document.querySelectorAll('.otp-input')].map(i => i.value).join('');
+  if (otp.length < 6) {
+    showAlert('rec-error-2', 'Vui lòng nhập đủ 6 chữ số.');
+    return;
+  }
+  hideAlert('rec-error-2');
+
+  const sdt = document.getElementById('rec-sdt').value.trim();
+  setLoading('btn-verify-otp', 'verify-spinner', true);
+
+  try {
+    const res  = await fetch(`${API}/auth/verify-otp`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sdt, otp })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showAlert('rec-error-2', data.message);
+      return;
+    }
+
+    // Chuyển sang step 3
+    document.getElementById('recovery-step2').style.display = 'none';
+    document.getElementById('recovery-step3').style.display = 'block';
+    document.getElementById('step2-dot').className   = 'step-dot done';
+    document.getElementById('step2-dot').textContent = '✓';
+    document.getElementById('step2-label').className = 'step-label';
+    document.getElementById('step3-dot').classList.add('active');
+    document.getElementById('step3-label').classList.add('active');
+
+  } catch {
+    showAlert('rec-error-2', 'Không thể kết nối server.');
+  } finally {
+    setLoading('btn-verify-otp', 'verify-spinner', false);
+  }
+}
+
+// ─── Khôi phục: Step 3 — Đặt mật khẩu mới ─────────
+async function resetPw() {
   const p1 = document.getElementById('new-pw').value;
   const p2 = document.getElementById('confirm-pw').value;
   let ok = true;
+
   if (p1.length < 8 || !/[a-zA-Z]/.test(p1) || !/[0-9]/.test(p1)) {
     document.getElementById('err-newpw').classList.add('show'); ok = false;
   } else { document.getElementById('err-newpw').classList.remove('show'); }
-  if (p1 !== p2) { document.getElementById('err-confirmpw').classList.add('show'); ok = false; }
-  else            { document.getElementById('err-confirmpw').classList.remove('show'); }
+
+  if (p1 !== p2) {
+    document.getElementById('err-confirmpw').classList.add('show'); ok = false;
+  } else { document.getElementById('err-confirmpw').classList.remove('show'); }
+
   if (!ok) return;
-  document.getElementById('step3-dot').classList.add('done');
-  document.getElementById('step3-dot').textContent = '✓';
-  document.getElementById('rec-success').classList.add('show');
-  document.getElementById('new-pw').value = '';
-  document.getElementById('confirm-pw').value = '';
-  setTimeout(() => showLogin(), 2000);
+  hideAlert('rec-error-3');
+
+  const sdt = document.getElementById('rec-sdt').value.trim();
+  setLoading('btn-reset', 'reset-spinner', true);
+
+  try {
+    const res  = await fetch(`${API}/auth/reset-password`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sdt, matkhauMoi: p1 })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showAlert('rec-error-3', data.message);
+      return;
+    }
+
+    // Thành công → về login
+    document.getElementById('step3-dot').className   = 'step-dot done';
+    document.getElementById('step3-dot').textContent = '✓';
+    alert('✅ ' + data.message + '\nVui lòng đăng nhập lại.');
+    showLogin();
+
+  } catch {
+    showAlert('rec-error-3', 'Không thể kết nối server.');
+  } finally {
+    setLoading('btn-reset', 'reset-spinner', false);
+  }
 }
-// Demo hint
-document.getElementById('login-user').value = 'nv@hygge.vn';
-document.getElementById('login-pw').value = 'Nv12345!';
+
+// ─── OTP input navigation ───────────────────────────
+function moveOtp(el, idx) {
+  if (el.value && idx < 5) {
+    document.querySelectorAll('.otp-input')[idx + 1].focus();
+  }
+}
+function backOtp(e, idx) {
+  if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+    document.querySelectorAll('.otp-input')[idx - 1].focus();
+  }
+}
 </script>
 </body>
 </html>

@@ -32,31 +32,6 @@
             <div class="st-lbl">Tổng ca định nghĩa</div>
           </div>
         </div>
-        <div class="stat-tile t-blue">
-          <div class="st-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-              <rect x="2" y="7" width="20" height="14" rx="2"/>
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            </svg>
-          </div>
-          <div>
-            <div class="st-val" id="st-fulltime">—</div>
-            <div class="st-lbl">Ca ngắn (Part-time)</div>
-          </div>
-        </div>
-        <div class="stat-tile t-amber">
-          <div class="st-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div>
-            <div class="st-val" id="st-parttime">—</div>
-            <div class="st-lbl">Ca dài (Full-time)</div>
-          </div>
-        </div>
       </div>
 
       <!-- ── Toolbar ── -->
@@ -133,50 +108,11 @@
       <span id="preview-text"></span>
     </div>
 
-    <!-- Loại nhân viên phù hợp -->
-    <div class="form-group" style="margin-top:16px;">
-      <label class="form-label">Phù hợp với loại nhân viên <span style="color:var(--red)">*</span></label>
-      <div class="loai-group">
-        <label class="loai-option selected" data-val="parttime">
-          <input type="radio" name="loai" value="parttime" checked />
-          <div class="lo-label">Part-time</div>
-          <div class="lo-sub">Ca ngắn, linh hoạt</div>
-        </label>
-        <label class="loai-option" data-val="fulltime">
-          <input type="radio" name="loai" value="fulltime" />
-          <div class="lo-label">Full-time</div>
-          <div class="lo-sub">Ca dài, cố định</div>
-        </label>
-        <label class="loai-option" data-val="both">
-          <input type="radio" name="loai" value="both" />
-          <div class="lo-label">Cả hai</div>
-          <div class="lo-sub">Không giới hạn</div>
-        </label>
-      </div>
-    </div>
-
-    <!-- Ghi chú -->
-    <div class="form-group">
-      <label class="form-label">Ghi chú <span style="color:var(--ink-muted);font-weight:400">(không bắt buộc)</span></label>
-      <textarea id="f-ghichu" class="form-control" rows="2"
-                placeholder="Thêm mô tả hoặc lưu ý cho ca này…"
-                style="resize:vertical;"></textarea>
-    </div>
-
-    <!-- Alert cảnh báo khi sửa -->
-    <div class="alert alert-warning" id="edit-warning" style="display:none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;margin-top:1px">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <span>Thay đổi thời gian ca sẽ cập nhật vào <strong>lịch làm tuần sau</strong>. Lịch tuần hiện tại không bị ảnh hưởng.</span>
-    </div>
-
   </div>
 
   <div class="side-panel-footer">
     <button class="btn btn-outline" onclick="closeSidePanel('ca-panel')">Hủy</button>
-    <button class="btn btn-primary" onclick="saveCalm()">
+    <button class="btn btn-primary" id="btn-save-ca" onclick="saveCalam()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
         <path d="M17 21v-8H7v8M7 3v5h8"/>
@@ -211,18 +147,6 @@
   initLayout(['quanly']).then(user => {
     if (!user) return;
     initCaLam();
-
-    /* Khi mở panel chỉnh sửa: hiện cảnh báo lịch tuần sau */
-    const origOpenEdit = openEdit;
-    window.openEdit = function(maca) {
-      origOpenEdit(maca);
-      document.getElementById('edit-warning').style.display = 'flex';
-    };
-    const origOpenAdd = openAdd;
-    window.openAdd = function() {
-      origOpenAdd();
-      document.getElementById('edit-warning').style.display = 'none';
-    };
   });
 </script>
 </body>

@@ -217,5 +217,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-backend/node_modules/
+node_modules/
 backend/.env
+backend/config/db.js

@@ -19,8 +19,7 @@
 
       <main class="content">
 
-        <!-- ── Stat cards ── -->
-        <div class="stat-grid" id="stat-grid">
+        <div class="stat-grid" id="stat-grid" style="grid-template-columns: repeat(3, 1fr);">
           <div class="stat-card">
             <div class="stat-icon stat-icon--blue">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M3 9l1-5h16l1 5"/><path d="M3 9v10h18V9"/><path d="M9 21v-6h6v6"/></svg>
@@ -42,16 +41,8 @@
             <div class="stat-label">Ngừng hoạt động</div>
             <div class="stat-value" id="s-inactive">—</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--purple">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M22 20c0-2.6-1.9-4.8-4.5-5.6"/></svg>
-            </div>
-            <div class="stat-label">Tổng nhân viên</div>
-            <div class="stat-value" id="s-staff">—</div>
-          </div>
         </div>
 
-        <!-- ── Toolbar ── -->
         <div class="page-bar">
           <div class="page-bar-left">
             <div class="search-wrap">
@@ -77,10 +68,8 @@
           </div>
         </div>
 
-        <!-- ── Branch grid ── -->
         <div class="branch-grid" id="branch-grid"></div>
 
-        <!-- Empty state -->
         <div class="empty-state" id="empty-state" style="display:none;">
           <div class="empty-icon">🏬</div>
           <p>Không tìm thấy chi nhánh nào.</p>
@@ -90,7 +79,6 @@
     </div>
   </div>
 
-  <!-- ══ SIDE PANEL: Thêm / Sửa ══ -->
   <div class="side-overlay" id="side-overlay" onclick="closeSidePanel('branch-panel')"></div>
   <div class="side-panel" id="branch-panel">
     <div class="side-panel-header">
@@ -149,7 +137,6 @@
     </div>
   </div>
 
-  <!-- ══ CONFIRM MODAL ══ -->
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal" style="width:400px;">
       <div class="modal-body" style="text-align:center; padding:28px 24px;">
@@ -169,7 +156,9 @@
   <script>
     initLayout(['quanly']).then(user => {
       if (!user) return;
-      initChinhanh();
+      if (typeof initChinhanh === 'function') {
+        initChinhanh();
+      }
     });
   </script>
 </body>

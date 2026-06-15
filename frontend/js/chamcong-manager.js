@@ -1,7 +1,6 @@
 /* ==========================================================
    manager/chamcong — Page controller
-   Tách từ inline script trong chamcong.html
-   Khi kết nối API: chỉ cần thay 3 chỗ TODO, xoá MOCK_*
+   Dùng apiFetch từ shared.js — không định nghĩa lại
 ========================================================== */
 
 /* ---------- STATE ---------- */
@@ -12,23 +11,6 @@ let allRows      = [];
 let filteredRows = [];
 let editingRow   = null;
 let caList       = [];
-
-/* ---------- MOCK DATA (xoá khi có API) ---------- */
-const MOCK_CA = [
-  { maca: 'C01', tenca: 'Ca sáng',  batdau: '08:00', ketthuc: '12:00' },
-  { maca: 'C02', tenca: 'Ca chiều', batdau: '13:00', ketthuc: '17:00' },
-  { maca: 'C03', tenca: 'Ca tối',   batdau: '17:00', ketthuc: '21:00' },
-];
-const MOCK_DATA = [
-  { id:1, manv:'NVP0001', hoten:'Nguyễn Mỹ Hạnh',  loai:'Part-time', maca:'C01', tenca:'Ca sáng',  batdau:'08:00', ketthuc:'12:00', checkin:'07:04', checkout:'12:01', muon:0, vesom:0 },
-  { id:2, manv:'NVP0002', hoten:'Trần Minh Tú',    loai:'Part-time', maca:'C01', tenca:'Ca sáng',  batdau:'08:00', ketthuc:'12:00', checkin:'06:58', checkout:'12:00', muon:0, vesom:0 },
-  { id:3, manv:'NVF0001', hoten:'Tạ Mai Phương',   loai:'Full-time', maca:'C01', tenca:'Ca sáng',  batdau:'08:00', ketthuc:'12:00', checkin:'08:17', checkout:'12:05', muon:1, vesom:0 },
-  { id:4, manv:'NVP0003', hoten:'Phạm Gia Dũng',   loai:'Part-time', maca:'C02', tenca:'Ca chiều', batdau:'13:00', ketthuc:'17:00', checkin:null,    checkout:null,    muon:0, vesom:0 },
-  { id:5, manv:'NVP0004', hoten:'Lê Thị Bình',     loai:'Part-time', maca:'C02', tenca:'Ca chiều', batdau:'13:00', ketthuc:'17:00', checkin:'13:02', checkout:'16:35', muon:0, vesom:1 },
-  { id:6, manv:'NVF0002', hoten:'Đoàn Lan Anh',    loai:'Full-time', maca:'C02', tenca:'Ca chiều', batdau:'13:00', ketthuc:'17:00', checkin:'13:00', checkout:'17:00', muon:0, vesom:0 },
-  { id:7, manv:'NVP0005', hoten:'Vũ Quốc Huy',     loai:'Part-time', maca:'C03', tenca:'Ca tối',   batdau:'17:00', ketthuc:'21:00', checkin:'17:03', checkout:'21:00', muon:0, vesom:0 },
-  { id:8, manv:'NVP0006', hoten:'Bùi Thu Hằng',    loai:'Part-time', maca:'C03', tenca:'Ca tối',   batdau:'17:00', ketthuc:'21:00', checkin:null,    checkout:null,    muon:0, vesom:0 },
-];
 
 /* ---------- HELPERS ---------- */
 function todayStr() {
@@ -41,14 +23,22 @@ function fmtDateVN(str) {
   return `${d}/${m}/${y}`;
 }
 
+function fmtTime(val) {
+  if (!val) return null;
+  if (typeof val === 'string' && val.includes('T')) {
+    return new Date(val).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+  return val.substring(0, 5);
+}
+
 function calcDuration(ci, co) {
   if (!ci || !co) return null;
-  const [h1, m1] = ci.split(':').map(Number);
-  const [h2, m2] = co.split(':').map(Number);
+  const t1 = fmtTime(ci), t2 = fmtTime(co);
+  const [h1, m1] = t1.split(':').map(Number);
+  const [h2, m2] = t2.split(':').map(Number);
   const mins = (h2 * 60 + m2) - (h1 * 60 + m1);
   if (mins <= 0) return null;
-  const h = Math.floor(mins / 60), m = mins % 60;
-  return `${h}h ${String(m).padStart(2, '0')}p`;
+  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}p`;
 }
 
 function initials(name) {
@@ -57,15 +47,21 @@ function initials(name) {
 
 function avatarColor(code) {
   const colors = ['#1D9E75','#2980B9','#8E44AD','#E67E22','#C0392B','#16A085','#D35400','#2C3E50'];
-  return colors[code.charCodeAt(code.length - 1) % colors.length];
+  return colors[(code || '').charCodeAt((code || '').length - 1) % colors.length];
 }
 
 function getStatus(row) {
-  if (!row.checkin)          return { label: 'Vắng',        cls: 'badge-red',   code: 'vang' };
-  if (row.muon && row.vesom) return { label: 'Muộn & Về sớm', cls: 'badge-amber', code: 'muon' };
-  if (row.muon)              return { label: 'Đi muộn',     cls: 'badge-amber', code: 'muon' };
-  if (row.vesom)             return { label: 'Về sớm',      cls: 'badge-amber', code: 'vesom' };
-  return                            { label: 'Đúng giờ',    cls: 'badge-green', code: 'dunggio' };
+  if (!row.checkin)
+    return { label: 'Vắng', cls: 'badge-red', code: 'vang' };
+  if (row.trangthaicheckin && row.trangthaicheckout)
+    return { label: 'Muộn & Về sớm', cls: 'badge-amber', code: 'muon' };
+  if (row.trangthaicheckin)
+    return { label: 'Đi muộn', cls: 'badge-amber', code: 'muon' };
+  if (row.trangthaicheckout)
+    return { label: 'Về sớm', cls: 'badge-amber', code: 'vesom' };
+  if (row.checkin && !row.checkout)
+    return { label: 'Chưa check-out', cls: 'badge-blue', code: 'chuacheckin' };
+  return { label: 'Đúng giờ', cls: 'badge-green', code: 'dunggio' };
 }
 
 function debounce(fn, ms) {
@@ -76,26 +72,40 @@ function debounce(fn, ms) {
 /* ---------- LOAD DATA ---------- */
 async function loadData() {
   showLoading(true);
-  // TODO: const res = await apiFetch(`/api/chamcong?ngay=${currentDate}`);
-  // allRows = res.data || [];
-  await new Promise(r => setTimeout(r, 300));
-  allRows = MOCK_DATA;
-  showLoading(false);
-  applyFilters();
-  updateStats();
-  updateTableHeading();
+  try {
+    const rows = await apiFetch(`/chamcong?tuNgay=${currentDate}&denNgay=${currentDate}`);
+
+    allRows = rows.map(r => ({
+      ...r,
+      checkin:  r.checkin  ? fmtTime(r.checkin)  : null,
+      checkout: r.checkout ? fmtTime(r.checkout) : null,
+      batdau:   fmtTime(r.thoigianbatdau),
+      ketthuc:  fmtTime(r.thoigianketthuc),
+    }));
+  } catch (err) {
+    showToast(err.message || 'Không thể tải dữ liệu', 'error');
+    allRows = [];
+  } finally {
+    showLoading(false);
+    applyFilters();
+    updateStats();
+    updateTableHeading();
+  }
 }
 
 async function loadCaList() {
-  // TODO: caList = await apiFetch('/api/calm');
-  caList = MOCK_CA;
-  const sel = document.getElementById('filter-ca');
-  caList.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.maca;
-    opt.textContent = `${c.tenca} (${c.batdau}–${c.ketthuc})`;
-    sel.appendChild(opt);
-  });
+  try {
+    caList = await apiFetch('/calam');
+    const sel = document.getElementById('filter-ca');
+    caList.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.maca;
+      opt.textContent = `${c.tenca} (${c.batdau}–${c.ketthuc})`;
+      sel.appendChild(opt);
+    });
+  } catch {
+    // Không ảnh hưởng chức năng chính
+  }
 }
 
 /* ---------- FILTERS ---------- */
@@ -108,14 +118,15 @@ function applyFilters() {
     if (ca && r.maca !== ca) return false;
     if (tt) {
       const st = getStatus(r).code;
-      if (tt === 'chuacheckin') return !r.checkin;
-      if (tt === 'muon'  && !r.muon)  return false;
-      if (tt === 'vesom' && !r.vesom) return false;
-      if (tt === 'dunggio' && st !== 'dunggio') return false;
-      if (tt === 'vang'    && st !== 'vang')    return false;
+      if (tt === 'chuacheckin' && r.checkin)        return false;
+      if (tt === 'muon'    && !r.trangthaicheckin)  return false;
+      if (tt === 'vesom'   && !r.trangthaicheckout) return false;
+      if (tt === 'dunggio' && st !== 'dunggio')     return false;
+      if (tt === 'vang'    && st !== 'vang')        return false;
     }
-    if (search && !r.hoten.toLowerCase().includes(search) &&
-        !r.manv.toLowerCase().includes(search)) return false;
+    if (search &&
+        !r.hoten.toLowerCase().includes(search) &&
+        !(r.manhanvien || '').toLowerCase().includes(search)) return false;
     return true;
   });
 
@@ -126,8 +137,8 @@ function applyFilters() {
 /* ---------- STATS ---------- */
 function updateStats() {
   document.getElementById('stat-total').textContent  = allRows.length;
-  document.getElementById('stat-ok').textContent     = allRows.filter(r => r.checkin && !r.muon && !r.vesom).length;
-  document.getElementById('stat-late').textContent   = allRows.filter(r => r.muon || r.vesom).length;
+  document.getElementById('stat-ok').textContent     = allRows.filter(r => getStatus(r).code === 'dunggio').length;
+  document.getElementById('stat-late').textContent   = allRows.filter(r => r.trangthaicheckin || r.trangthaicheckout).length;
   document.getElementById('stat-absent').textContent = allRows.filter(r => !r.checkin).length;
 }
 
@@ -157,25 +168,25 @@ function renderTable() {
     const st  = getStatus(row);
     const dur = calcDuration(row.checkin, row.checkout);
     const av  = initials(row.hoten);
-    const bg  = avatarColor(row.manv);
+    const bg  = avatarColor(row.manhanvien);
 
     const ciHtml = row.checkin
-      ? `<span class="${row.muon ? 'time-warn' : 'time-ok'}">${row.checkin}</span>`
+      ? `<span class="${row.trangthaicheckin ? 'time-warn' : 'time-ok'}">${row.checkin}</span>`
       : `<span class="time-miss">—</span>`;
 
     const coHtml = row.checkout
-      ? `<span class="${row.vesom ? 'time-warn' : ''}">${row.checkout}</span>`
+      ? `<span class="${row.trangthaicheckout ? 'time-warn' : ''}">${row.checkout}</span>`
       : row.checkin
         ? `<span class="time-miss">Chưa check-out</span>`
         : `<span class="time-miss">—</span>`;
 
-    return `<tr data-id="${row.id}">
+    return `<tr data-id="${row.malichlam}">
       <td>
         <div class="nv-cell">
           <div class="nv-av" style="background:${bg}">${av}</div>
           <div class="nv-info">
             <div class="nv-name">${row.hoten}</div>
-            <div class="nv-meta">${row.manv} · ${row.loai}</div>
+            <div class="nv-meta">${row.manhanvien}</div>
           </div>
         </div>
       </td>
@@ -190,9 +201,9 @@ function renderTable() {
       </td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
       <td class="action-cell">
-        <button class="btn-row-edit" onclick="openEdit(${row.id})" title="Chỉnh sửa">
-          ✏️ Sửa
-        </button>
+        <button class="btn-row-edit"
+          onclick="openEdit('${row.manhanvien}','${row.malichlam}')"
+          title="Chỉnh sửa">✏️ Sửa</button>
       </td>
     </tr>`;
   }).join('');
@@ -226,13 +237,13 @@ function showLoading(on) {
 }
 
 /* ---------- EDIT MODAL ---------- */
-function openEdit(id) {
-  editingRow = allRows.find(r => r.id === id);
+function openEdit(manhanvien, malichlam) {
+  editingRow = allRows.find(r => r.manhanvien === manhanvien && r.malichlam === malichlam);
   if (!editingRow) return;
 
-  document.getElementById('edit-nv-name').textContent  = editingRow.hoten;
-  document.getElementById('edit-ca-name').textContent  = editingRow.tenca;
-  document.getElementById('edit-ngay').textContent     = fmtDateVN(currentDate);
+  document.getElementById('edit-nv-name').textContent = editingRow.hoten;
+  document.getElementById('edit-ca-name').textContent = editingRow.tenca;
+  document.getElementById('edit-ngay').textContent    = fmtDateVN(currentDate);
   document.getElementById('edit-quydinh-text').textContent =
     `${editingRow.tenca} · ${editingRow.batdau} – ${editingRow.ketthuc}`;
 
@@ -240,7 +251,7 @@ function openEdit(id) {
   document.getElementById('edit-checkout').value = editingRow.checkout || '';
   document.getElementById('edit-lydo').value     = '';
 
-  ['err-checkin', 'err-checkout', 'err-lydo'].forEach(id => {
+  ['err-checkin','err-checkout','err-lydo'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
 
@@ -253,7 +264,7 @@ function validateEdit() {
   const co   = document.getElementById('edit-checkout').value;
   const lydo = document.getElementById('edit-lydo').value.trim();
 
-  ['err-checkin', 'err-checkout', 'err-lydo'].forEach(id => {
+  ['err-checkin','err-checkout','err-lydo'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
 
@@ -276,34 +287,32 @@ async function saveEdit() {
   if (!validateEdit() || !editingRow) return;
 
   const btn = document.getElementById('btn-save-edit');
-  btn.disabled = true;
+  btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span> Đang lưu…';
 
   const ci   = document.getElementById('edit-checkin').value;
-  const co   = document.getElementById('edit-checkout').value;
-  const lydo = document.getElementById('edit-lydo').value.trim();
+  const co   = document.getElementById('edit-checkout').value || null;
+  const ngay = currentDate;
 
-  // TODO: await apiFetch(`/api/chamcong/${editingRow.manv}/${editingRow.maca}`, 'PUT', { checkin: ci, checkout: co, lydo });
-  await new Promise(r => setTimeout(r, 500));
+  const checkinISO  = ci ? `${ngay}T${ci}:00` : null;
+  const checkoutISO = co ? `${ngay}T${co}:00` : null;
 
-  const idx = allRows.findIndex(r => r.id === editingRow.id);
-  if (idx !== -1) {
-    allRows[idx].checkin  = ci;
-    allRows[idx].checkout = co;
-    const [bh, bm] = editingRow.batdau.split(':').map(Number);
-    const [kh, km] = editingRow.ketthuc.split(':').map(Number);
-    const [cih, cim] = ci.split(':').map(Number);
-    const [coh, com] = co ? co.split(':').map(Number) : [0, 0];
-    allRows[idx].muon  = (cih * 60 + cim) > (bh * 60 + bm) ? 1 : 0;
-    allRows[idx].vesom = co ? (coh * 60 + com) < (kh * 60 + km) ? 1 : 0 : 0;
+  try {
+    await apiFetch(
+      `/chamcong/${editingRow.manhanvien}/${editingRow.malichlam}`,
+      'PUT',
+      { checkin: checkinISO, checkout: checkoutISO }
+    );
+
+    closeModal('modal-edit');
+    showToast(`Đã cập nhật chấm công — ${editingRow.hoten}`, 'success');
+    await loadData();
+  } catch (err) {
+    showToast(err.message || 'Lưu thất bại', 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = 'Lưu thay đổi';
   }
-
-  btn.disabled = false;
-  btn.innerHTML = 'Lưu thay đổi';
-  closeModal('modal-edit');
-  applyFilters();
-  updateStats();
-  showToast(`Đã cập nhật chấm công — ${editingRow.hoten}`, 'success');
 }
 
 /* ---------- DATE NAV ---------- */
