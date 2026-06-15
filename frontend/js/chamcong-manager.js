@@ -26,7 +26,12 @@ function fmtDateVN(str) {
 function fmtTime(val) {
   if (!val) return null;
   if (typeof val === 'string' && val.includes('T')) {
-    return new Date(val).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return new Date(val).toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
   }
   return val.substring(0, 5);
 }
@@ -249,9 +254,8 @@ function openEdit(manhanvien, malichlam) {
 
   document.getElementById('edit-checkin').value  = editingRow.checkin  || '';
   document.getElementById('edit-checkout').value = editingRow.checkout || '';
-  document.getElementById('edit-lydo').value     = '';
 
-  ['err-checkin','err-checkout','err-lydo'].forEach(id => {
+  ['err-checkin','err-checkout'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
 
@@ -260,11 +264,10 @@ function openEdit(manhanvien, malichlam) {
 
 function validateEdit() {
   let ok = true;
-  const ci   = document.getElementById('edit-checkin').value;
-  const co   = document.getElementById('edit-checkout').value;
-  const lydo = document.getElementById('edit-lydo').value.trim();
+  const ci = document.getElementById('edit-checkin').value;
+  const co = document.getElementById('edit-checkout').value;
 
-  ['err-checkin','err-checkout','err-lydo'].forEach(id => {
+  ['err-checkin','err-checkout'].forEach(id => {
     document.getElementById(id).textContent = '';
   });
 
@@ -274,10 +277,6 @@ function validateEdit() {
   }
   if (ci && co && co <= ci) {
     document.getElementById('err-checkout').textContent = 'Giờ check-out phải sau giờ check-in';
-    ok = false;
-  }
-  if (!lydo) {
-    document.getElementById('err-lydo').textContent = 'Lý do chỉnh sửa là bắt buộc';
     ok = false;
   }
   return ok;

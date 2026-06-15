@@ -308,7 +308,9 @@ router.get('/', auth, async (req, res) => {
       .query(`
         SELECT dk.manhanvien, nv.hoten, RTRIM(cl.tenca) AS tenca,
           RTRIM(dk.malichlam) AS malichlam, ll.ngay,
-          ll.thoigianbatdau, ll.thoigianketthuc,
+          -- Ép kiểu giờ về dạng chuỗi HH:mm để không bị lỗi múi giờ khi serialize JSON
+          CONVERT(VARCHAR(5), ll.thoigianbatdau, 108) AS thoigianbatdau,
+          CONVERT(VARCHAR(5), ll.thoigianketthuc, 108) AS thoigianketthuc,
           cc.checkin, cc.checkout, cc.trangthaicheckin, cc.trangthaicheckout
         FROM Dang_ky_lich_lam dk
         JOIN Nhan_vien nv ON nv.manhanvien = dk.manhanvien
@@ -396,7 +398,8 @@ router.get('/lichsu', auth, async (req, res) => {
       .input('manhanvien', sql.VarChar, manhanvien)
       .query(`
         SELECT RTRIM(cl.tenca) AS tenca, ll.ngay,
-          ll.thoigianbatdau, ll.thoigianketthuc,
+          CONVERT(VARCHAR(5), ll.thoigianbatdau, 108) AS thoigianbatdau,
+          CONVERT(VARCHAR(5), ll.thoigianketthuc, 108) AS thoigianketthuc,
           cc.checkin, cc.checkout, cc.trangthaicheckin, cc.trangthaicheckout
         FROM Dang_ky_lich_lam dk
         JOIN Lich_lam ll ON ll.malichlam = dk.malichlam
