@@ -53,7 +53,8 @@ router.post('/', auth, chiManager, async (req, res) => {
     await pool.request()
       .input('tenchinhanh', sql.NVarChar, tenchinhanh)
       .input('diachi',      sql.NVarChar, diachi)
-      .input('sdtcn',       sql.Char,     sdtcn || null)
+      // FIX LỖI SĐT: Sửa thành VarChar(10) để không bị cắt xén còn 1 số
+      .input('sdtcn',       sql.VarChar(10), sdtcn || null)
       .input('giomocua',    sql.VarChar,  giomocua)
       .input('giodongcua',  sql.VarChar,  giodongcua)
       .query(`
@@ -75,8 +76,20 @@ router.post('/', auth, chiManager, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ POST chinhanh:', err.message);
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('❌ Lỗi POST chinhanh (Database):', err.message);
+
+    // Dịch lỗi SQL Server sang Tiếng Việt
+    if (err.message.includes('CK_CN_Gio')) {
+      return res.status(400).json({ message: 'Giờ đóng cửa phải muộn hơn giờ mở cửa!' });
+    }
+    if (err.message.includes('Violation of UNIQUE KEY constraint') || err.message.includes('PRIMARY KEY')) {
+      return res.status(400).json({ message: 'Dữ liệu này đã tồn tại trong hệ thống!' });
+    }
+    if (err.message.includes('String or binary data would be truncated')) {
+      return res.status(400).json({ message: 'Dữ liệu nhập vào quá dài so với cho phép!' });
+    }
+
+    res.status(500).json({ message: 'Lỗi server: ' + err.message });
   }
 });
 
@@ -95,7 +108,8 @@ router.put('/:id', auth, chiManager, async (req, res) => {
       .input('machinhanh',  sql.VarChar,  machinhanh)
       .input('tenchinhanh', sql.NVarChar, tenchinhanh)
       .input('diachi',      sql.NVarChar, diachi)
-      .input('sdtcn',       sql.Char,     sdtcn || null)
+      // FIX LỖI SĐT: Sửa thành VarChar(10) để không bị cắt xén còn 1 số
+      .input('sdtcn',       sql.VarChar(10), sdtcn || null)
       .input('giomocua',    sql.VarChar,  giomocua)
       .input('giodongcua',  sql.VarChar,  giodongcua)
       .input('trangthai',   sql.Bit,      trangthai ? 1 : 0)
@@ -113,8 +127,20 @@ router.put('/:id', auth, chiManager, async (req, res) => {
     res.json({ message: 'Cập nhật chi nhánh thành công' });
 
   } catch (err) {
-    console.error('❌ PUT chinhanh:', err.message);
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('❌ Lỗi PUT chinhanh (Database):', err.message);
+
+    // Dịch lỗi SQL Server sang Tiếng Việt
+    if (err.message.includes('CK_CN_Gio')) {
+      return res.status(400).json({ message: 'Giờ đóng cửa phải muộn hơn giờ mở cửa nha!' });
+    }
+    if (err.message.includes('Violation of UNIQUE KEY constraint') || err.message.includes('PRIMARY KEY')) {
+      return res.status(400).json({ message: 'Dữ liệu này đã tồn tại trong hệ thống!' });
+    }
+    if (err.message.includes('String or binary data would be truncated')) {
+      return res.status(400).json({ message: 'Dữ liệu nhập vào quá dài so với cho phép!' });
+    }
+
+    res.status(500).json({ message: 'Lỗi server: ' + err.message });
   }
 });
 
@@ -149,8 +175,8 @@ router.delete('/:id', auth, chiManager, async (req, res) => {
     res.json({ message: 'Xóa chi nhánh thành công' });
 
   } catch (err) {
-    console.error('❌ DELETE chinhanh:', err.message);
-    res.status(500).json({ message: 'Lỗi server' });
+    console.error('❌ Lỗi DELETE chinhanh:', err.message);
+    res.status(500).json({ message: 'Lỗi server: ' + err.message });
   }
 });
 

@@ -7,48 +7,81 @@ const { sql, pool, poolConnect } = require('../config/db');
 const trangThaiStore = {};
 
 // ═══════════════════════════════════════════════════
-// HELPER — Tính thứ 2 của tuần chứa ngày d
+// HELPER — Tính thứ 2 (Monday) của tuần chứa ngày dStr
+// Nhận / trả về string 'yyyy-mm-dd' — KHÔNG dùng Date object
+// để tránh lệch timezone khi parse/format qua lại.
 // ═══════════════════════════════════════════════════
-function getMondayOfDate(d) {
-  const date = new Date(d);
-  const day  = date.getDay();
-  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-  date.setHours(0, 0, 0, 0);
-  return date;
+function getMondayOfDateStr(dStr) {
+  // Parse 'yyyy-mm-dd' thành các thành phần riêng, dựng Date ở UTC
+  // để getDay() không bị ảnh hưởng bởi timezone local của server.
+  const [y, m, d] = dStr.split('-').map(Number);
+  const utcDate   = new Date(Date.UTC(y, m - 1, d));
+  const day       = utcDate.getUTCDay(); // 0 = CN
+  const diff      = day === 0 ? 6 : day - 1;
+  utcDate.setUTCDate(utcDate.getUTCDate() - diff);
+  return fmtDateUTC(utcDate);
+}
+
+// ═══════════════════════════════════════════════════
+// HELPER — Cộng n ngày vào string 'yyyy-mm-dd', trả về string
+// Dùng UTC nội bộ để tránh lệch timezone.
+// ═══════════════════════════════════════════════════
+function addDaysStr(dStr, n) {
+  const [y, m, d] = dStr.split('-').map(Number);
+  const utcDate   = new Date(Date.UTC(y, m - 1, d));
+  utcDate.setUTCDate(utcDate.getUTCDate() + n);
+  return fmtDateUTC(utcDate);
+}
+
+// ═══════════════════════════════════════════════════
+// HELPER — Format Date (UTC) -> 'yyyy-mm-dd'
+// ═══════════════════════════════════════════════════
+function fmtDateUTC(utcDate) {
+  const y = utcDate.getUTCFullYear();
+  const m = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(utcDate.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// ═══════════════════════════════════════════════════
+// HELPER — Lấy ngày hôm nay dạng 'yyyy-mm-dd' theo UTC
+// (giữ cách tính nhất quán với getMondayOfDateStr/addDaysStr)
+// ═══════════════════════════════════════════════════
+function todayStr() {
+  const now = new Date();
+  return fmtDateUTC(new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())));
 }
 
 // ═══════════════════════════════════════════════════
 // HELPER — Tự động tạo Lich_lam cho 1 tuần
 // Chỉ tạo cho tuần SAU tuần hiện tại trở đi
-// Với mỗi ngày × mỗi ca → nếu chưa có thì INSERT
+// weekStartStr: 'yyyy-mm-dd' (thứ 2 đầu tuần) — STRING, không phải Date
 // ═══════════════════════════════════════════════════
-async function autoTaoLichTuan(weekStart) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const thuHienTai = getMondayOfDate(today);
+async function autoTaoLichTuan(weekStartStr) {
+  const thuHienTaiStr = getMondayOfDateStr(todayStr());
 
+  console.log('weekStart:', weekStartStr);
+  console.log('thuHienTai:', thuHienTaiStr);
+  console.log('weekStart < thuHienTai:', weekStartStr <= thuHienTaiStr);
+
+  // So sánh string 'yyyy-mm-dd' theo thứ tự từ điển = đúng thứ tự thời gian
   // Không tạo cho tuần hiện tại hoặc quá khứ
-  if (weekStart <= thuHienTai) return;
+  if (weekStartStr < thuHienTaiStr) return;
 
-  // Lấy tất cả ca làm hiện tại
   const caResult = await pool.request().query(`
     SELECT RTRIM(maca) AS maca FROM Ca_lam
   `);
   const danhSachCa = caResult.recordset.map(r => r.maca);
-
   if (danhSachCa.length === 0) return;
 
-  // Với mỗi ngày trong tuần × mỗi ca → tạo nếu chưa có
   for (let i = 0; i < 7; i++) {
-    const ngay = new Date(weekStart);
-    ngay.setDate(weekStart.getDate() + i);
-    const ngayStr = ngay.toISOString().slice(0, 10);
+    const ngayStr = addDaysStr(weekStartStr, i);
 
     for (const maca of danhSachCa) {
       try {
         await pool.request()
-          .input('maca', sql.Char,    maca)
-          .input('ngay', sql.Date,    ngayStr)
+          .input('maca', sql.VarChar(10), maca)
+          .input('ngay', sql.Date, ngayStr)
           .query(`
             IF NOT EXISTS (
               SELECT 1 FROM Lich_lam
@@ -58,12 +91,12 @@ async function autoTaoLichTuan(weekStart) {
             VALUES (@maca, @ngay)
           `);
       } catch {
-        // Bỏ qua nếu trigger báo lỗi trùng
+        // Bỏ qua nếu trùng
       }
     }
   }
 
-  console.log(`✅ Auto-tạo lịch tuần ${weekStart.toISOString().slice(0,10)}`);
+  console.log(`✅ Auto-tạo lịch tuần ${weekStartStr}`);
 }
 
 // ═══════════════════════════════════════════════════
@@ -99,6 +132,11 @@ router.get('/slots', auth, async (req, res) => {
 
   try {
     await poolConnect;
+
+    // Tự động tạo lịch nếu tuần tương lai chưa có
+    // tuNgay đã là 'yyyy-mm-dd' từ query string -> dùng thẳng, không qua Date
+    await autoTaoLichTuan(getMondayOfDateStr(tuNgay));
+
     const result = await pool.request()
       .input('tuNgay',  sql.Date, tuNgay)
       .input('denNgay', sql.Date, denNgay)
@@ -138,32 +176,28 @@ router.get('/trangthai', auth, async (req, res) => {
 router.get('/tuan', auth, async (req, res) => {
   const { manhanvien } = req.user;
 
-  let t2TuanToi;
+  let t2TuanToiStr;
   if (req.query.start) {
-    t2TuanToi = new Date(req.query.start);
-    t2TuanToi.setHours(0, 0, 0, 0);
+    // req.query.start là 'yyyy-mm-dd' -> quy về đúng thứ 2 của tuần đó
+    t2TuanToiStr = getMondayOfDateStr(req.query.start);
   } else {
-    const today  = new Date();
-    const thu    = today.getDay();
-    const soNgay = thu === 0 ? 1 : 8 - thu;
-    t2TuanToi    = new Date(today);
-    t2TuanToi.setDate(today.getDate() + soNgay);
-    t2TuanToi.setHours(0, 0, 0, 0);
+    // Mặc định: thứ 2 của tuần KẾ TIẾP (tuần sau tuần hiện tại)
+    const thu2TuanNay = getMondayOfDateStr(todayStr());
+    t2TuanToiStr      = addDaysStr(thu2TuanNay, 7);
   }
 
-  const t8TuanToi = new Date(t2TuanToi);
-  t8TuanToi.setDate(t2TuanToi.getDate() + 7);
+  const t8TuanToiStr = addDaysStr(t2TuanToiStr, 7);
 
   try {
     await poolConnect;
 
     // Tự động tạo lịch nếu tuần tương lai chưa có
-    await autoTaoLichTuan(t2TuanToi);
+    await autoTaoLichTuan(t2TuanToiStr);
 
     const result = await pool.request()
-      .input('manhanvien', sql.VarChar, manhanvien)
-      .input('tuDngay',    sql.Date,    t2TuanToi)
-      .input('denNgay',    sql.Date,    t8TuanToi)
+      .input('manhanvien', sql.VarChar(10), manhanvien)
+      .input('tuDngay',    sql.Date,        t2TuanToiStr)
+      .input('denNgay',    sql.Date,        t8TuanToiStr)
       .query(`
         SELECT
           RTRIM(ll.malichlam) AS malichlam,
@@ -198,25 +232,24 @@ router.post('/dangky', auth, async (req, res) => {
   if (!Array.isArray(danhSachMaLich))
     return res.status(400).json({ message: 'danhSachMaLich phải là mảng' });
 
-  const today = new Date();
-  const thu   = today.getDay();
+  // Chỉ cho đăng ký từ T2 đến T6 (theo giờ UTC, nhất quán với todayStr)
+  const now = new Date();
+  const thu = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())).getUTCDay();
   if (thu === 0 || thu === 6)
     return res.status(400).json({ message: 'Đã hết hạn đăng ký. Chỉ đăng ký từ T2 đến T6.' });
 
-  const soNgay    = thu === 0 ? 1 : 8 - thu;
-  const t2TuanToi = new Date(today);
-  t2TuanToi.setDate(today.getDate() + soNgay);
-  t2TuanToi.setHours(0, 0, 0, 0);
-  const t8TuanToi = new Date(t2TuanToi);
-  t8TuanToi.setDate(t2TuanToi.getDate() + 7);
+  // Đăng ký cho tuần KẾ TIẾP (tuần sau tuần hiện tại)
+  const thu2TuanNay = getMondayOfDateStr(todayStr());
+  const t2TuanToiStr = addDaysStr(thu2TuanNay, 7);
+  const t8TuanToiStr = addDaysStr(t2TuanToiStr, 7);
 
   try {
     await poolConnect;
 
     await pool.request()
-      .input('manhanvien', sql.VarChar, manhanvien)
-      .input('tuNgay',     sql.Date,    t2TuanToi)
-      .input('denNgay',    sql.Date,    t8TuanToi)
+      .input('manhanvien', sql.VarChar(10), manhanvien)
+      .input('tuNgay',     sql.Date,        t2TuanToiStr)
+      .input('denNgay',    sql.Date,        t8TuanToiStr)
       .query(`
         DELETE dk FROM Dang_ky_lich_lam dk
         JOIN Lich_lam ll ON ll.malichlam = dk.malichlam
@@ -226,8 +259,8 @@ router.post('/dangky', auth, async (req, res) => {
 
     for (const malichlam of danhSachMaLich) {
       await pool.request()
-        .input('manhanvien', sql.VarChar, manhanvien)
-        .input('malichlam',  sql.VarChar, malichlam)
+        .input('manhanvien', sql.VarChar(10), manhanvien)
+        .input('malichlam',  sql.VarChar(20), malichlam)
         .query(`
           INSERT INTO Dang_ky_lich_lam (manhanvien, malichlam)
           VALUES (@manhanvien, @malichlam)
@@ -246,7 +279,6 @@ router.post('/dangky', auth, async (req, res) => {
 
 // ═══════════════════════════════════════════════════
 // GET /api/lichlam/quanly — Quản lý xem lịch toàn bộ NV
-// Tự động tạo lịch nếu là tuần tương lai và chưa có
 // ═══════════════════════════════════════════════════
 router.get('/quanly', auth, async (req, res) => {
   if (req.user.vaiTro !== 'manager')
@@ -256,18 +288,19 @@ router.get('/quanly', auth, async (req, res) => {
   const tuNgay     = req.query.tuNgay;
   const denNgay    = req.query.denNgay;
 
+  if (!tuNgay || !denNgay)
+    return res.status(400).json({ message: 'Thiếu tuNgay hoặc denNgay' });
+
   try {
     await poolConnect;
 
     // Tự động tạo lịch nếu tuần tương lai chưa có
-    const weekStart = new Date(tuNgay);
-    weekStart.setHours(0, 0, 0, 0);
-    await autoTaoLichTuan(weekStart);
+    await autoTaoLichTuan(getMondayOfDateStr(tuNgay));
 
     const result = await pool.request()
-      .input('machinhanh', sql.VarChar, machinhanh)
-      .input('tuNgay',     sql.Date,    tuNgay)
-      .input('denNgay',    sql.Date,    denNgay)
+      .input('machinhanh', sql.VarChar(10), machinhanh)
+      .input('tuNgay',     sql.Date,        tuNgay)
+      .input('denNgay',    sql.Date,        denNgay)
       .query(`
         SELECT
           nv.manhanvien,
@@ -307,17 +340,16 @@ router.post('/taolich', auth, async (req, res) => {
   try {
     await poolConnect;
     await pool.request()
-      .input('maca', sql.Char, maca)
-      .input('ngay', sql.Date, ngay)
+      .input('maca', sql.VarChar(10), maca)
+      .input('ngay', sql.Date,        ngay)
       .query(`INSERT INTO Lich_lam (maca, ngay) VALUES (@maca, @ngay)`);
 
     const r = await pool.request()
-      .input('maca', sql.Char, maca)
-      .input('ngay', sql.Date, ngay)
+      .input('maca', sql.VarChar(10), maca)
+      .input('ngay', sql.Date,        ngay)
       .query(`
         SELECT RTRIM(malichlam) AS malichlam
-        FROM Lich_lam
-        WHERE maca = @maca AND ngay = @ngay
+        FROM Lich_lam WHERE maca=@maca AND ngay=@ngay
       `);
 
     res.status(201).json({
@@ -349,8 +381,8 @@ router.post('/dieuphoi', auth, async (req, res) => {
 
     if (action === 'add') {
       const check = await pool.request()
-        .input('manhanvien', sql.VarChar, manhanvien)
-        .input('malichlam',  sql.VarChar, malichlam)
+        .input('manhanvien', sql.VarChar(10), manhanvien)
+        .input('malichlam',  sql.VarChar(20), malichlam)
         .query(`
           SELECT COUNT(*) AS so FROM Dang_ky_lich_lam
           WHERE manhanvien=@manhanvien AND malichlam=@malichlam
@@ -360,8 +392,8 @@ router.post('/dieuphoi', auth, async (req, res) => {
         return res.status(409).json({ message: 'Nhân viên đã có trong ca này' });
 
       await pool.request()
-        .input('manhanvien', sql.VarChar, manhanvien)
-        .input('malichlam',  sql.VarChar, malichlam)
+        .input('manhanvien', sql.VarChar(10), manhanvien)
+        .input('malichlam',  sql.VarChar(20), malichlam)
         .query(`
           INSERT INTO Dang_ky_lich_lam (manhanvien, malichlam)
           VALUES (@manhanvien, @malichlam)
@@ -371,8 +403,8 @@ router.post('/dieuphoi', auth, async (req, res) => {
 
     } else if (action === 'remove') {
       await pool.request()
-        .input('manhanvien', sql.VarChar, manhanvien)
-        .input('malichlam',  sql.VarChar, malichlam)
+        .input('manhanvien', sql.VarChar(10), manhanvien)
+        .input('malichlam',  sql.VarChar(20), malichlam)
         .query(`
           DELETE FROM Dang_ky_lich_lam
           WHERE manhanvien=@manhanvien AND malichlam=@malichlam
@@ -401,10 +433,21 @@ router.post('/chot', auth, async (req, res) => {
   const { tuan } = req.body;
   if (!tuan) return res.status(400).json({ message: 'Thiếu tuan' });
 
-  // Lưu vào memory store
   trangThaiStore[tuan] = 'locked';
-
   res.json({ message: 'Đã chốt lịch tuần thành công', tuan, trangThai: 'locked' });
 });
 
+// POST /api/lichlam/mochot — Mở lại lịch đã chốt
+// ═══════════════════════════════════════════════════
+router.post('/mochot', auth, async (req, res) => {
+  if (req.user.vaiTro !== 'manager')
+    return res.status(403).json({ message: 'Chỉ quản lý mới mở chốt được lịch' });
+
+  const { tuan } = req.body;
+  if (!tuan) return res.status(400).json({ message: 'Thiếu tuan' });
+
+  // Rollback trạng thái về nháp
+  trangThaiStore[tuan] = 'draft';
+  res.json({ message: 'Đã mở chốt lịch thành công', tuan, trangThai: 'draft' });
+});
 module.exports = router;

@@ -8,33 +8,24 @@
 </head>
 <body>
 
-  <!-- Lớp phủ khi mở sidebar trên mobile -->
   <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
 
   <div class="app-shell">
 
-    <!-- Sidebar được renderSidebar() đổ vào đây -->
     <aside class="sidebar" id="sidebar-root"></aside>
 
     <div class="main">
 
-      <!-- Header được renderHeader() đổ vào đây -->
       <header class="header" id="header-root"></header>
 
       <main class="content">
 
-        <!-- ====================================================
-             0) TABS: Xem / Chỉnh sửa / Xác nhận
-        ==================================================== -->
         <div class="tabs">
           <button class="tab-btn active" id="tab-btn-view"    onclick="switchTab('view')">Xem</button>
           <button class="tab-btn"        id="tab-btn-edit"    onclick="switchTab('edit')">Chỉnh sửa</button>
           <button class="tab-btn"        id="tab-btn-confirm" onclick="switchTab('confirm')" disabled>Xác nhận</button>
         </div>
 
-        <!-- ====================================================
-             0b) BANNER THÔNG TIN ĐĂNG KÝ
-        ==================================================== -->
         <div class="alert alert-info" id="reg-banner-open">
           📌 Đang mở đăng ký cho tuần <strong id="banner-week-range">--</strong>.
           Hạn đăng ký: <strong id="banner-deadline">--</strong>
@@ -43,9 +34,6 @@
           ⏰ Đã hết hạn đăng ký ca làm cho tuần này. Bạn chỉ có thể xem lịch đã đăng ký.
         </div>
 
-        <!-- ====================================================
-             TAB 1: XEM (read-only)
-        ==================================================== -->
         <div id="tab-view">
           <div class="page-bar">
             <div class="page-bar-left">
@@ -70,9 +58,6 @@
           </div>
         </div>
 
-        <!-- ====================================================
-             TAB 2: CHỈNH SỬA (interactive)
-        ==================================================== -->
         <div id="tab-edit" style="display: none;">
           <div class="page-bar">
             <div class="page-bar-left">
@@ -98,9 +83,6 @@
           </div>
         </div>
 
-        <!-- ====================================================
-             TAB 3: XÁC NHẬN (summary)
-        ==================================================== -->
         <div id="tab-confirm" style="display: none;">
           <div class="page-bar">
             <div class="page-bar-left">
@@ -125,7 +107,6 @@
     </div>
   </div>
 
-  <!-- Popup xác nhận gửi đăng ký -->
   <div class="modal-overlay" id="confirm-modal">
     <div class="modal" style="width: 360px;">
       <div class="modal-body" style="text-align: center; padding: 28px 24px;">
@@ -140,7 +121,6 @@
     </div>
   </div>
 
-  <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
   <div class="side-overlay" id="side-overlay"></div>
 
  <script src="../js/shared.js"></script>
@@ -162,6 +142,12 @@ let currentWeekStart = null;
 const DAYS_VN_LABEL = ['T2','T3','T4','T5','T6','T7','CN'];
 
 // ── Helpers tuần ──
+
+// FIX TIMEZONE: Hàm mới lấy chuỗi YYYY-MM-DD theo giờ Local của VN
+function ymdLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function getMondayOf(d) {
   const date = new Date(d);
   const day  = date.getDay();
@@ -220,7 +206,8 @@ initLayout(['nhanvien']).then(async user => {
 ============================================================ */
 async function loadWeek() {
   try {
-    const startStr = currentWeekStart.toISOString().slice(0, 10);
+    // Sửa lỗi timezone ở đây
+    const startStr = ymdLocal(currentWeekStart); 
     lichTuan = await apiFetch(`/lichlam/tuan?start=${startStr}`);
 
     registeredSet = {};
@@ -288,14 +275,24 @@ function renderBanner() {
   const nextWeek = isNextWeek(currentWeekStart);
   const conHan   = conHanDangKy();
 
+  // Xác định mốc Thứ 2 của tuần hiện tại để so sánh
+  const today = new Date();
+  const currentMonday = getMondayOf(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+
   if (nextWeek && conHan) {
+    // 1. Đang xem Tuần tới + Còn hạn (T2 - T6)
     document.getElementById('reg-banner-open').style.display    = 'block';
     document.getElementById('reg-banner-expired').style.display = 'none';
   } else if (nextWeek && !conHan) {
+    // 2. Đang xem Tuần tới + Hết hạn (Đã sang T7, CN)
+    document.getElementById('reg-banner-open').style.display    = 'none';
+    document.getElementById('reg-banner-expired').style.display = 'block';
+  } else if (currentWeekStart <= currentMonday) {
+    // 3. Đang xem Tuần hiện tại hoặc Quá khứ -> Chắc chắn đã hết hạn đăng ký
     document.getElementById('reg-banner-open').style.display    = 'none';
     document.getElementById('reg-banner-expired').style.display = 'block';
   } else {
-    // Tuần khác tuần tới → ẩn cả 2 banner
+    // 4. Các tuần xa tít tắp trong tương lai (sau tuần tới) -> Tạm thời giấu banner
     document.getElementById('reg-banner-open').style.display    = 'none';
     document.getElementById('reg-banner-expired').style.display = 'none';
   }
@@ -372,7 +369,8 @@ function renderViewGrid() {
       </span></td>`;
 
     dates.forEach(d => {
-      const key       = `${d.toISOString().slice(0,10)}_${shift.maca}`;
+      // Sửa lỗi timezone ở đây
+      const key       = `${ymdLocal(d)}_${shift.maca}`;
       const malichlam = lichMap[key];
 
       if (!malichlam) {
@@ -407,7 +405,8 @@ function renderEditGrid() {
       </span></td>`;
 
     dates.forEach(d => {
-      const key       = `${d.toISOString().slice(0,10)}_${shift.maca}`;
+      // Sửa lỗi timezone ở đây
+      const key       = `${ymdLocal(d)}_${shift.maca}`;
       const malichlam = lichMap[key];
 
       if (!malichlam) {
@@ -460,7 +459,7 @@ function renderConfirmTable() {
   const empty = document.getElementById('confirm-empty');
 
   if (!keys.length) {
-    table.innerHTML    = '';
+    table.innerHTML     = '';
     empty.style.display = 'block';
     return;
   }
@@ -542,3 +541,5 @@ function switchTab(tab) {
   if (tab === 'confirm') renderConfirmTable();
 }
 </script>
+</body>
+</html>

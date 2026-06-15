@@ -10,22 +10,21 @@ let weekData         = {};
 let malichlamMap     = {};
 let trangThaiTuan    = {};
 
+/* ── Helpers ngày tháng (không bị lệch timezone) ── */
 function ymd(d) {
-  // Fix timezone — không dùng toISOString vì bị lệch múi giờ
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  d.setHours(0, 0, 0, 0);
+function addDays(date, n) {
+  // Dùng getFullYear/Month/Date để tránh DST/timezone
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
   return d;
 }
 
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
+function getMondayOf(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay(); // 0=CN, 1=T2...
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return d;
 }
 
@@ -54,12 +53,9 @@ function initials(name) {
   return (name||'?').split(' ').map(w=>w[0]).slice(-2).join('').toUpperCase();
 }
 
-// Hàm fix hiển thị giờ (cắt bỏ phần 1970-01-01T...Z)
 function formatTime(val) {
   if (!val) return '';
-  if (val.includes('T')) {
-    return val.split('T')[1].substring(0, 5);
-  }
+  if (val.includes('T')) return val.split('T')[1].substring(0, 5);
   return val.substring(0, 5);
 }
 
@@ -150,7 +146,6 @@ function renderTableBody(days) {
   }
 
   tbody.innerHTML = shiftList.map(shift => {
-    // Đã bọc formatTime() ở đây để hiển thị đẹp
     let row = `<td class="shift-label-cell">
       <div class="sl-name">${shift.tenca}</div>
       <div class="sl-time">${formatTime(shift.batdau)} – ${formatTime(shift.ketthuc)}</div>
@@ -175,22 +170,35 @@ function renderTableBody(days) {
   }).join('');
 }
 
+// ── ĐÃ SỬA: Biến nút thành công tắc Chốt / Mở chốt ──
 function renderStatusPill() {
   const key    = ymd(currentWeekStart);
   const status = trangThaiTuan[key] || 'draft';
   const pill   = document.getElementById('status-pill');
   const btn    = document.getElementById('btn-chot-lich');
 
+  // Clone lại nút để xóa sạch các sự kiện click cũ
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+
   if (status === 'locked') {
     pill.className = 'status-pill locked';
     pill.innerHTML = `<i class="pill-ic">🔒</i> Đã chốt lịch`;
-    btn.disabled   = true;
-    btn.innerHTML  = `✅ Đã chốt`;
+    
+    // Nút biến thành Mở chốt
+    newBtn.disabled   = false;
+    newBtn.className  = 'btn btn-outline'; 
+    newBtn.innerHTML  = `🔓 Mở chốt lịch`;
+    newBtn.addEventListener('click', askMoChotLich);
   } else {
     pill.className = 'status-pill draft';
     pill.innerHTML = `<i class="pill-ic">📝</i> Bản nháp — chưa chốt`;
-    btn.disabled   = false;
-    btn.innerHTML  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Chốt lịch`;
+    
+    // Nút biến thành Chốt lịch
+    newBtn.disabled   = false;
+    newBtn.className  = 'btn btn-primary';
+    newBtn.innerHTML  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Chốt lịch`;
+    newBtn.addEventListener('click', askChotLich);
   }
 }
 
@@ -202,10 +210,16 @@ function shiftWeek(delta) {
 
 /* ── Modal điều phối ── */
 async function openDieuPhoi(ngay, maca) {
+  // ── ĐÃ SỬA: Chặn không cho mở Modal nếu lịch đã khóa ──
+  const weekKey = ymd(currentWeekStart);
+  if (trangThaiTuan[weekKey] === 'locked') {
+    showToast('Lịch tuần này đã chốt. Vui lòng Mở chốt trước khi chỉnh sửa!', 'warning');
+    return;
+  }
+
   const shift = shiftList.find(s => s.maca === maca);
   if (!shift) return;
 
-  // Lấy malichlam từ map, nếu chưa có thì tạo mới
   let malichlam = malichlamMap[`${ngay}_${maca}`];
   if (!malichlam) {
     try {
@@ -215,7 +229,6 @@ async function openDieuPhoi(ngay, maca) {
       if (!weekData[`${ngay}_${maca}`]) weekData[`${ngay}_${maca}`] = [];
     } catch (err) {
       if (err.message.includes('đã có lịch')) {
-        // Lịch đã có nhưng không có trong map → reload
         await loadWeekData(currentWeekStart);
         malichlam = malichlamMap[`${ngay}_${maca}`];
       }
@@ -228,12 +241,12 @@ async function openDieuPhoi(ngay, maca) {
 
   _dpContext = { ngay, maca, malichlam };
 
-  const d = new Date(ngay + 'T00:00:00'); // fix timezone khi new Date(string)
+  // Fix timezone khi parse ngày từ string
+  const parts = ngay.split('-');
+  const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
   const dayNames = ['CN','T2','T3','T4','T5','T6','T7'];
   document.getElementById('dp-ngay').textContent = `${dayNames[d.getDay()]}, ${fmtDayMonth(d)}/${d.getFullYear()}`;
   document.getElementById('dp-ca').textContent   = shift.tenca;
-  
-  // Đã bọc formatTime() ở đây để hiển thị đẹp trên Modal
   document.getElementById('dp-gio').textContent  = `${formatTime(shift.batdau)} – ${formatTime(shift.ketthuc)}`;
 
   renderDPList();
@@ -373,6 +386,28 @@ async function chotLich() {
   }
 }
 
+// ── ĐÃ SỬA: Thêm cụm hàm Mở Chốt ──
+function askMoChotLich() {
+  document.getElementById('confirm-icon').textContent  = '🔓';
+  document.getElementById('confirm-title').textContent = 'Mở chốt lịch tuần này?';
+  document.getElementById('confirm-text').textContent  = 'Lịch sẽ được chuyển về dạng bản nháp để bạn có thể thêm/xóa nhân viên.';
+
+  _confirmCb = () => moChotLich();
+  openModal('confirm-modal');
+}
+
+async function moChotLich() {
+  const key = ymd(currentWeekStart);
+  try {
+    await apiFetch('/lichlam/mochot', 'POST', { tuan: key });
+    trangThaiTuan[key] = 'draft';
+    renderStatusPill();
+    showToast('Đã mở chốt lịch thành công', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 /* ── Init ── */
 initLayout(['quanly']).then(async user => {
   if (!user) return;
@@ -384,12 +419,15 @@ initLayout(['quanly']).then(async user => {
     return;
   }
 
-  currentWeekStart = getMondayOf(new Date());
+  // Fix timezone: dùng new Date(y, m, d) thay vì new Date()
+  const now = new Date();
+  currentWeekStart = getMondayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   await renderWeek();
 
   document.getElementById('btn-prev-week').addEventListener('click', () => shiftWeek(-1));
   document.getElementById('btn-next-week').addEventListener('click', () => shiftWeek(1));
-  document.getElementById('btn-chot-lich').addEventListener('click', askChotLich);
+  
+  // (Đã xóa dòng gán sự kiện cho btn-chot-lich ở đây vì renderStatusPill đã đảm nhiệm)
   document.getElementById('btn-dp-add').addEventListener('click', addNVToShift);
   document.getElementById('modal-dieuphoi').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-dieuphoi')) closeModal('modal-dieuphoi');
