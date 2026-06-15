@@ -1,6 +1,6 @@
 const sql = require('mssql/msnodesqlv8');
 require('dotenv').config();
-
+sql.Date = sql.VarChar(10);
 const config = {
   connectionString: 'Driver={SQL Server};Server=DESKTOP-FU4M18N\\SQLEXPRESS02;Database=HyggeDB;Trusted_Connection=yes;'
 };
