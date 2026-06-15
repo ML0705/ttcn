@@ -10,7 +10,7 @@ const PAGE_SIZE  = 10;
 let allRows      = [];
 let filteredRows = [];
 let editingRow   = null;
-let caList       = [];
+
 
 /* ---------- HELPERS ---------- */
 function todayStr() {
@@ -58,14 +58,19 @@ function avatarColor(code) {
 function getStatus(row) {
   if (!row.checkin)
     return { label: 'Vắng', cls: 'badge-red', code: 'vang' };
+
   if (row.trangthaicheckin && row.trangthaicheckout)
     return { label: 'Muộn & Về sớm', cls: 'badge-amber', code: 'muon' };
+
   if (row.trangthaicheckin)
     return { label: 'Đi muộn', cls: 'badge-amber', code: 'muon' };
+
   if (row.trangthaicheckout)
     return { label: 'Về sớm', cls: 'badge-amber', code: 'vesom' };
+
   if (row.checkin && !row.checkout)
     return { label: 'Chưa check-out', cls: 'badge-blue', code: 'chuacheckin' };
+
   return { label: 'Đúng giờ', cls: 'badge-green', code: 'dunggio' };
 }
 
@@ -90,45 +95,20 @@ async function loadData() {
   } catch (err) {
     showToast(err.message || 'Không thể tải dữ liệu', 'error');
     allRows = [];
-  } finally {
-    showLoading(false);
-    applyFilters();
-    updateStats();
-    updateTableHeading();
-  }
+  }finally {
+  showLoading(false);
+  updateStats();
+  updateTableHeading();
+  applyFilters();
+}
 }
 
-async function loadCaList() {
-  try {
-    caList = await apiFetch('/calam');
-    const sel = document.getElementById('filter-ca');
-    caList.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.maca;
-      opt.textContent = `${c.tenca} (${c.batdau}–${c.ketthuc})`;
-      sel.appendChild(opt);
-    });
-  } catch {
-    // Không ảnh hưởng chức năng chính
-  }
-}
 
 /* ---------- FILTERS ---------- */
 function applyFilters() {
-  const ca     = document.getElementById('filter-ca').value;
-  const tt     = document.getElementById('filter-tt').value;
   const search = document.getElementById('filter-search').value.trim().toLowerCase();
 
   filteredRows = allRows.filter(r => {
-    if (ca && r.maca !== ca) return false;
-    if (tt) {
-      const st = getStatus(r).code;
-      if (tt === 'chuacheckin' && r.checkin)        return false;
-      if (tt === 'muon'    && !r.trangthaicheckin)  return false;
-      if (tt === 'vesom'   && !r.trangthaicheckout) return false;
-      if (tt === 'dunggio' && st !== 'dunggio')     return false;
-      if (tt === 'vang'    && st !== 'vang')        return false;
-    }
     if (search &&
         !r.hoten.toLowerCase().includes(search) &&
         !(r.manhanvien || '').toLowerCase().includes(search)) return false;
@@ -333,7 +313,7 @@ initLayout(['quanly']).then(async user => {
   if (!user) return;
 
   document.getElementById('filter-date').value = currentDate;
-  await loadCaList();
+ 
   await loadData();
 
   document.getElementById('filter-date').addEventListener('change', e => {
@@ -341,10 +321,7 @@ initLayout(['quanly']).then(async user => {
   });
   document.getElementById('btn-prev-day').addEventListener('click', () => shiftDate(-1));
   document.getElementById('btn-next-day').addEventListener('click', () => shiftDate(+1));
-  document.getElementById('filter-ca').addEventListener('change', applyFilters);
-  document.getElementById('filter-tt').addEventListener('change', applyFilters);
   document.getElementById('filter-search').addEventListener('input', debounce(applyFilters, 250));
-  document.getElementById('btn-export').addEventListener('click', exportReport);
   document.getElementById('modal-edit').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-edit')) closeModal('modal-edit');
   });
