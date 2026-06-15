@@ -94,103 +94,277 @@
   <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
   <div class="side-overlay" id="side-overlay"></div>
 
+  <!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HYGGE HR · Lịch sử chấm công</title>
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+
+  <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar-root"></aside>
+
+    <div class="main">
+      <header class="header" id="header-root"></header>
+
+      <main class="content">
+
+        <!-- Bộ lọc tháng + ca -->
+        <div class="page-bar">
+          <div class="page-bar-left">
+            <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">‹</button>
+            <span class="fw-600" id="month-label">Tháng --/----</span>
+            <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="page-bar-right">
+            <select class="form-control" style="width: auto;" id="shift-filter"
+                    onchange="histPage = 0; applyFilter();">
+              <option value="">Tất cả ca</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Thống kê tháng -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Ngày đi làm</div>
+            <div class="stat-value" id="hs-worked">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ngày vắng</div>
+            <div class="stat-value" id="hs-absent">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ngày muộn</div>
+            <div class="stat-value" id="hs-late">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tổng giờ</div>
+            <div class="stat-value" id="hs-total-hours">--</div>
+          </div>
+        </div>
+
+        <!-- Bảng lịch sử -->
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Ngày</th>
+                  <th>Ca làm</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
+                  <th>Tổng giờ</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="hist-pagination"></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <div class="side-overlay" id="side-overlay"></div>
+
   <script src="../js/shared.js"></script>
-  <!-- <script src="../js/utils.js"></script> -->
-  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi có API, thay histData mock
-       trong loadHistory() bằng apiFetch('/lichsu/...') theo curMonth -->
   <script>
-    initLayout(['nhanvien']).then(user => {
-      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+/* ============================================================
+   lichsu.js — Lịch sử chấm công (nhân viên)
+   API: GET /api/chamcong/lichsu
+============================================================ */
 
-      initHistoryPage();
-    });
+let curMonth = new Date().getMonth();
+let curYear  = new Date().getFullYear();
+let histPage = 0;
+let allData  = []; // toàn bộ từ API
+let filtered = []; // sau khi lọc tháng + ca
+const PER_PAGE = 6;
 
-    /* ===================================================================
-       DỮ LIỆU LỊCH SỬ CHẤM CÔNG (MOCK)
-       - curMonth: 0-indexed (4 = Tháng 05)
-       - Khi có API thật: gọi lại loadHistory() mỗi khi đổi tháng/năm
-    =================================================================== */
-    let curMonth = new Date().getMonth();
-    let curYear  = new Date().getFullYear();
-    let histPage = 0;
-    const PER_PAGE = 6;
+// ── Init ──
+initLayout(['nhanvien']).then(async user => {
+  if (!user) return;
+  await loadHistory();
+});
 
-    const histData = [
-      { date: '12/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:02', total: '4h 4p', status: 'Hoàn thành' },
-      { date: '11/05/2025', shift: 'Ca chiều', ci: '13:00', co: '17:00', total: '4h', status: 'Hoàn thành' },
-      { date: '10/05/2025', shift: 'Ca tối', ci: '18:02', co: '22:00', total: '3h 58p', status: 'Về sớm' },
-      { date: '09/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
-      { date: '08/05/2025', shift: 'Ca chiều', ci: '08:01', co: '12:05', total: '4h 4p', status: 'Muộn giờ' },
-      { date: '07/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
-      { date: '06/05/2025', shift: 'Ca tối', ci: '18:00', co: '22:00', total: '4h', status: 'Hoàn thành' },
-      { date: '05/05/2025', shift: 'Ca sáng', ci: '07:58', co: '12:00', total: '4h 2p', status: 'Hoàn thành' },
-    ];
+/* ============================================================
+   LOAD DỮ LIỆU
+============================================================ */
+async function loadHistory() {
+  try {
+    allData = await apiFetch('/chamcong/lichsu');
 
-    function initHistoryPage() {
-      updateMonthLabel();
-      renderSummary();
-      renderHistory();
+    // Tự động điền dropdown ca từ dữ liệu thật
+    const danhSachCa = [...new Set(allData.map(r => r.tenca).filter(Boolean))].sort();
+    const sel = document.getElementById('shift-filter');
+    sel.innerHTML = '<option value="">Tất cả ca</option>' +
+      danhSachCa.map(ca => `<option value="${ca}">${ca}</option>`).join('');
+
+  } catch (err) {
+    showToast('Không tải được lịch sử chấm công', 'error');
+    allData = [];
+  }
+
+  updateMonthLabel();
+  applyFilter();
+}
+
+/* ============================================================
+   LỌC THEO THÁNG + CA
+============================================================ */
+function applyFilter() {
+  const filterShift = document.getElementById('shift-filter').value;
+
+  filtered = allData.filter(r => {
+    const ngay = new Date(r.ngay);
+    if (ngay.getMonth() !== curMonth || ngay.getFullYear() !== curYear) return false;
+    if (filterShift && r.tenca !== filterShift) return false;
+    return true;
+  });
+
+  histPage = 0;
+  renderSummary();
+  renderHistory();
+}
+
+/* ============================================================
+   ĐIỀU HƯỚNG THÁNG
+============================================================ */
+function changeMonth(delta) {
+  curMonth += delta;
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  if (curMonth < 0)  { curMonth = 11; curYear--; }
+  updateMonthLabel();
+  applyFilter();
+}
+
+function updateMonthLabel() {
+  document.getElementById('month-label').textContent =
+    `Tháng ${String(curMonth + 1).padStart(2, '0')}/${curYear}`;
+}
+
+/* ============================================================
+   HELPERS
+============================================================ */
+function fmtTime(val) {
+  if (!val) return '--:--';
+  const s = val.toString();
+  if (s.includes('T')) {
+    const d = new Date(val);
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  return s.slice(0, 5);
+}
+
+function fmtNgay(val) {
+  if (!val) return '--';
+  const d = new Date(val);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+function calcDuration(ci, co) {
+  if (!ci || !co) return '--';
+  const t1   = new Date(ci);
+  const t2   = new Date(co);
+  const mins = Math.floor((t2 - t1) / 60000);
+  if (mins <= 0) return '--';
+  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2,'0')}p`;
+}
+
+function getStatus(r) {
+  if (!r.checkin)
+    return { label: 'Vắng',         cls: 'badge-red'   };
+  if (!r.checkout)
+    return { label: 'Chưa check-out', cls: 'badge-blue' };
+  if (r.trangthaicheckin && r.trangthaicheckout)
+    return { label: 'Muộn & Về sớm', cls: 'badge-amber' };
+  if (r.trangthaicheckin)
+    return { label: 'Đi muộn',       cls: 'badge-amber' };
+  if (r.trangthaicheckout)
+    return { label: 'Về sớm',        cls: 'badge-amber' };
+  return   { label: 'Hoàn thành',    cls: 'badge-green' };
+}
+
+/* ============================================================
+   THỐNG KÊ THÁNG
+============================================================ */
+function renderSummary() {
+  const soNgayLam = new Set(
+    filtered.filter(r => r.checkin).map(r => r.ngay?.slice(0, 10))
+  ).size;
+
+  const soVang = filtered.filter(r => !r.checkin).length;
+  const soMuon = filtered.filter(r => r.trangthaicheckin).length;
+
+  let tongPhut = 0;
+  filtered.forEach(r => {
+    if (r.checkin && r.checkout) {
+      tongPhut += Math.floor((new Date(r.checkout) - new Date(r.checkin)) / 60000);
     }
+  });
 
-    /* ===== Điều hướng tháng ===== */
-    function changeMonth(delta) {
-      curMonth += delta;
-      if (curMonth > 11) { curMonth = 0; curYear++; }
-      if (curMonth < 0)  { curMonth = 11; curYear--; }
-      histPage = 0;
-      updateMonthLabel();
-      renderSummary();
-      renderHistory();
-      // TODO Giai đoạn 3: loadHistory(curMonth, curYear) để lấy dữ liệu từ API
-    }
+  const tongGio    = Math.floor(tongPhut / 60);
+  const lePhut     = tongPhut % 60;
+  const tongGioStr = lePhut > 0 ? `${tongGio}h ${lePhut}p` : `${tongGio}h`;
 
-    function updateMonthLabel() {
-      document.getElementById('month-label').textContent =
-        `Tháng ${String(curMonth + 1).padStart(2, '0')}/${curYear}`;
-    }
+  document.getElementById('hs-worked').textContent      = soNgayLam;
+  document.getElementById('hs-absent').textContent      = soVang;
+  document.getElementById('hs-late').textContent        = soMuon;
+  document.getElementById('hs-total-hours').textContent = tongGioStr || '--';
+}
 
-    /* ===== Thống kê tổng hợp tháng (mock) ===== */
-    function renderSummary() {
-      document.getElementById('hs-worked').textContent      = '20';
-      document.getElementById('hs-absent').textContent      = '1';
-      document.getElementById('hs-late').textContent        = '2';
-      document.getElementById('hs-total-hours').textContent = '176h';
-    }
+/* ============================================================
+   RENDER BẢNG
+============================================================ */
+function renderHistory() {
+  const start = histPage * PER_PAGE;
+  const rows  = filtered.slice(start, start + PER_PAGE);
+  const tbody = document.getElementById('history-body');
 
-    /* ===== Badge trạng thái ===== */
-    function statusBadge(s) {
-      const map = { 'Hoàn': 'badge-green', 'Về': 'badge-amber', 'Muộn': 'badge-red', 'Vắng': 'badge-red' };
-      const key = Object.keys(map).find(k => s.startsWith(k));
-      return `<span class="badge ${map[key] || 'badge-gray'}">${s}</span>`;
-    }
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr>
+      <td colspan="7" style="text-align:center;color:var(--ink-muted);padding:20px;">
+        Không có dữ liệu trong tháng này
+      </td>
+    </tr>`;
+  } else {
+    tbody.innerHTML = rows.map((r, i) => {
+      const st  = getStatus(r);
+      const ci  = fmtTime(r.checkin);
+      const co  = r.checkout ? fmtTime(r.checkout) : '--:--';
+      const dur = calcDuration(r.checkin, r.checkout);
+      return `<tr>
+        <td>${start + i + 1}</td>
+        <td>${fmtNgay(r.ngay)}</td>
+        <td>${r.tenca || '--'}</td>
+        <td>${ci}</td>
+        <td>${co}</td>
+        <td>${dur}</td>
+        <td><span class="badge ${st.cls}">${st.label}</span></td>
+      </tr>`;
+    }).join('');
+  }
 
-    /* ===== Render bảng lịch sử (có lọc theo ca + phân trang) ===== */
-    function renderHistory() {
-      const filterShift = document.getElementById('shift-filter').value;
-      const filtered = filterShift ? histData.filter(r => r.shift === filterShift) : histData;
-
-      const rows = filtered.slice(histPage * PER_PAGE, histPage * PER_PAGE + PER_PAGE);
-
-      document.getElementById('history-body').innerHTML = rows.length
-        ? rows.map((r, i) => `
-            <tr>
-              <td>${histPage * PER_PAGE + i + 1}</td>
-              <td>${r.date}</td>
-              <td>${r.shift}</td>
-              <td>${r.ci}</td>
-              <td>${r.co}</td>
-              <td>${r.total}</td>
-              <td>${statusBadge(r.status)}</td>
-            </tr>`).join('')
-        : `<tr><td colspan="7" style="text-align:center;color:var(--ink-muted);padding:20px">Không có dữ liệu</td></tr>`;
-
-      const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-      document.getElementById('hist-pagination').innerHTML =
-        Array.from({ length: pages }, (_, i) =>
-          `<div class="page-btn ${i === histPage ? 'active' : ''}" onclick="histPage=${i};renderHistory()">${i + 1}</div>`
-        ).join('') +
-        `<span class="page-info" style="margin-left: 8px;">Hiển thị ${rows.length} / ${filtered.length} bản ghi</span>`;
-    }
+  // Phân trang
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  document.getElementById('hist-pagination').innerHTML =
+    Array.from({ length: totalPages }, (_, i) =>
+      `<div class="page-btn ${i === histPage ? 'active' : ''}"
+            onclick="histPage=${i};renderHistory()">${i + 1}</div>`
+    ).join('') +
+    `<span class="page-info" style="margin-left:8px;">
+      Hiển thị ${rows.length} / ${filtered.length} bản ghi
+    </span>`;
+}
   </script>
 </body>
 </html>
