@@ -140,15 +140,27 @@
     let gpsMapInstance   = null;
 
     // ─── Format giờ từ chuỗi hoặc Date ───────────────
+    // ─── Format giờ từ chuỗi hoặc Date (ĐÃ NÂNG CẤP BỌC THÉP) ───────────────
+    // ─── Format giờ TỰ ĐỘNG NHẬN DIỆN MÚI GIỜ VN ───────────────
     function fmtTime(val) {
       if (!val) return '--:--';
-      // Nếu là chuỗi dạng '07:00:00'
-      if (typeof val === 'string' && val.includes(':')) return val.substring(0, 5);
-      // Nếu là ISO datetime
-      const d = new Date(val);
-      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    }
+      
+      try {
+        // Ném chuỗi của Database vào Date để trình duyệt tự dịch (Ví dụ: 04:31 UTC -> 11:31 VN)
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+      } catch (e) {}
 
+      // Nếu DB trả về chuỗi giờ thuần túy (VD: "13:00:00") thì mới xài cắt chữ
+      const strVal = String(val);
+      if (strVal.includes('T')) return strVal.split('T')[1].substring(0, 5);
+      if (strVal.includes(' ')) return strVal.split(' ')[1].substring(0, 5);
+      if (strVal.includes(':')) return strVal.substring(0, 5);
+      
+      return '--:--';
+    }
     // ─── Load dữ liệu từ API ─────────────────────────
     async function loadHomNay() {
       const token = localStorage.getItem('token');
