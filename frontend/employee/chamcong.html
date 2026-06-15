@@ -10,23 +10,15 @@
 </head>
 <body>
 
-  <!-- Lớp phủ khi mở sidebar trên mobile -->
   <div class="mobile-overlay" onclick="toggleMobileSidebar()"></div>
 
   <div class="app-shell">
-
-    <!-- Sidebar được renderSidebar() đổ vào đây -->
     <aside class="sidebar" id="sidebar-root"></aside>
-
     <div class="main">
-
-      <!-- Header được renderHeader() đổ vào đây -->
       <header class="header" id="header-root"></header>
-
       <main class="content">
-        <!-- ====================================================
-             1) THỐNG KÊ THÁNG NÀY
-        ==================================================== -->
+
+        <!-- THỐNG KÊ THÁNG -->
         <div class="stat-grid">
           <div class="stat-card">
             <div class="stat-label">Số ngày làm tháng này</div>
@@ -45,22 +37,17 @@
           </div>
         </div>
 
-        <!-- ====================================================
-             2) CA LÀM HÔM NAY
-        ==================================================== -->
+        <!-- CA LÀM HÔM NAY -->
         <div class="card">
-
-          <!-- Tiêu đề + trạng thái ca -->
           <div class="page-bar" style="margin-bottom: 18px;">
             <div class="page-bar-left">
               <h2 class="card-title" style="margin:0">Ca làm hôm nay</h2>
             </div>
             <div class="page-bar-right">
-              <span class="badge badge-green" id="shift-status-badge">Đang trong ca</span>
+              <span class="badge badge-green" id="shift-status-badge">--</span>
             </div>
           </div>
 
-          <!-- Thông tin ca: tên ca / giờ bắt đầu / giờ kết thúc -->
           <div class="flex justify-between gap-16" style="flex-wrap: wrap; margin-bottom: 24px;">
             <div>
               <div class="stat-label">Tên ca</div>
@@ -76,44 +63,34 @@
             </div>
           </div>
 
-          <!-- Thanh tiến trình: Check-in -> Hiện tại -> Check-out -->
+          <!-- Thanh tiến trình -->
           <div class="flex items-center justify-between" style="margin-bottom: 24px; padding: 0 8px;">
-
-            <!-- Điểm Check-in -->
             <div class="flex flex-col items-center gap-8">
-              <div id="tl-dot-checkin" style="width:12px; height:12px; border-radius:50%; background: var(--accent);"></div>
+              <div id="tl-dot-checkin" style="width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--border-strong);"></div>
               <div class="text-sm fw-600" id="tl-checkin-time">--:--</div>
               <div class="text-muted text-sm">Check-in</div>
             </div>
-
-            <div id="tl-line-left" style="flex:1; height:2px; background: var(--accent); margin: 0 8px;"></div>
-
-            <!-- Điểm hiện tại / trạng thái -->
+            <div id="tl-line-left" style="flex:1;height:2px;background:var(--border);margin:0 8px;"></div>
             <div class="flex flex-col items-center gap-8">
-              <div id="tl-dot-current" style="width:12px; height:12px; border-radius:50%; background: var(--accent);"></div>
-              <div class="text-sm fw-600" id="tl-current-label" style="color: var(--accent);">Đang làm</div>
-              <div class="text-muted text-sm" id="tl-current-sub">Hiện tại</div>
+              <div id="tl-dot-current" style="width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--border-strong);"></div>
+              <div class="text-sm fw-600" id="tl-current-label" style="color:var(--ink-muted);">--</div>
+              <div class="text-muted text-sm" id="tl-current-sub"></div>
             </div>
-
-            <div id="tl-line-right" style="flex:1; height:2px; background: var(--border); margin: 0 8px;"></div>
-
-            <!-- Điểm Check-out -->
+            <div id="tl-line-right" style="flex:1;height:2px;background:var(--border);margin:0 8px;"></div>
             <div class="flex flex-col items-center gap-8">
-              <div id="tl-dot-checkout" style="width:12px; height:12px; border-radius:50%; border: 2px solid var(--border-strong); background: var(--surface);"></div>
+              <div id="tl-dot-checkout" style="width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--border-strong);"></div>
               <div class="text-sm fw-600" id="tl-checkout-time">--:--</div>
               <div class="text-muted text-sm">Check-out</div>
             </div>
           </div>
 
-          <!-- Chi tiết Check-in / Check-out -->
+          <!-- Chi tiết check-in / check-out -->
           <div class="form-row" style="margin-bottom: 20px;">
             <div class="stat-card">
               <div class="stat-label">Check-in</div>
-              <div id="ci-content">
-                <div class="stat-value" style="color: var(--accent);" id="ci-time-value">--:--</div>
-                <span class="badge" id="ci-status-badge"></span>
-                <div class="text-sm text-muted" id="ci-location" style="margin-top: 6px;"></div>
-              </div>
+              <div class="stat-value" id="ci-time-value" style="color:var(--accent);">--:--</div>
+              <span class="badge badge-gray" id="ci-status-badge"></span>
+              <div class="text-sm text-muted" id="ci-location" style="margin-top:6px;"></div>
             </div>
             <div class="stat-card">
               <div class="stat-label">Check-out</div>
@@ -124,26 +101,27 @@
             </div>
           </div>
 
-          <!-- Nút hành động: mở modal xác nhận vị trí GPS trước khi check-in/out -->
-          <button class="btn btn-primary" id="btn-shift-action" style="width:100%; justify-content:center;" onclick="openGpsModal()">
-            Check-out
+          <button class="btn btn-primary" id="btn-shift-action"
+            style="width:100%;justify-content:center;" onclick="openGpsModal()" disabled>
+            --
           </button>
         </div>
+
       </main>
     </div>
   </div>
 
-  <!-- Modal xác nhận vị trí GPS khi Check-in / Check-out -->
+  <!-- Modal GPS -->
   <div class="modal-overlay" id="gps-modal">
-    <div class="modal" style="width: 420px;">
+    <div class="modal" style="width:420px;">
       <div class="modal-header">
-        <div style="font-weight: 700;">📍 Xác nhận vị trí <span id="gps-action-label">Check-out</span></div>
+        <div style="font-weight:700;">📍 Xác nhận vị trí <span id="gps-action-label"></span></div>
         <button class="btn-icon" onclick="closeGpsModal()">✕</button>
       </div>
       <div class="modal-body">
-        <div id="gps-status" class="text-sm text-muted" style="margin-bottom: 10px;">Đang lấy vị trí hiện tại...</div>
-        <div id="gps-map" style="width: 100%; height: 240px; border-radius: var(--radius); background: var(--surface-2); overflow: hidden;"></div>
-        <div id="gps-coords" class="text-sm text-muted" style="margin-top: 10px;"></div>
+        <div id="gps-status" class="text-sm text-muted" style="margin-bottom:10px;">Đang lấy vị trí hiện tại...</div>
+        <div id="gps-map" style="width:100%;height:240px;border-radius:var(--radius);background:var(--surface-2);overflow:hidden;"></div>
+        <div id="gps-coords" class="text-sm text-muted" style="margin-top:10px;"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeGpsModal()">Hủy</button>
@@ -152,223 +130,208 @@
     </div>
   </div>
 
-  <!-- Side overlay dùng chung cho side-panel (trang này không dùng nhưng giữ để đồng bộ layout) -->
   <div class="side-overlay" id="side-overlay"></div>
 
   <script src="../js/shared.js"></script>
-  <!-- <script src="../js/utils.js"></script> -->
-  <!-- TODO Giai đoạn 3: bỏ comment utils.js khi API chấm công đã sẵn sàng,
-       thay phần dữ liệu mock trong initAttendancePage() bằng apiFetch('/chamcong/...') -->
   <script>
-    initLayout(['nhanvien']).then(user => {
-      if (!user) return; // initLayout đã tự chuyển trang nếu không hợp lệ
+    const API = 'http://localhost:3000/api';
+    let shiftState  = { status: 'pending', caHomNay: null, chamCong: null };
+    let pendingGpsCoords = null;
+    let gpsMapInstance   = null;
 
-      initAttendancePage();
-    });
-
-    /* ===================================================================
-       DỮ LIỆU TRANG CHẤM CÔNG (MOCK)
-       - shiftState.status: 'pending' -> chưa check-in
-                             'in'      -> đang trong ca (đã check-in, chưa check-out)
-                             'done'    -> đã hoàn thành ca
-       - checkInLocation/checkOutLocation: toạ độ GPS { lat, lng } ghi nhận
-         lúc bấm Check-in/Check-out (lấy từ navigator.geolocation)
-       - Khi có API thật: lấy dữ liệu này từ /api/chamcong/hom-nay
-    =================================================================== */
-    let shiftState = {
-      status: 'in',
-      shift: { name: 'Ca sáng', start: '07:00', end: '12:00' },
-      checkIn: '07:04',
-      checkOut: null,
-      lateMinutes: 4,
-      // Vị trí GPS lúc check-in/check-out: { lat, lng } hoặc null
-      checkInLocation: { lat: 21.0058, lng: 105.8231 }, // mock: gần CN Đống Đa
-      checkOutLocation: null,
-    };
-
-    function initAttendancePage() {
-      // Thống kê tháng này (mock)
-      const monthStats = {
-        workedDays: 14,
-        expectedDays: 20,
-        totalHours: 56,
-        lateCount: 1,
-      };
-      document.getElementById('stat-worked-days').textContent = monthStats.workedDays;
-      document.getElementById('stat-expected-days').textContent = `/ ${monthStats.expectedDays} ngày dự kiến`;
-      document.getElementById('stat-total-hours').textContent = monthStats.totalHours;
-      document.getElementById('stat-late-count').textContent = monthStats.lateCount;
-
-      renderShiftState();
+    // ─── Format giờ từ chuỗi hoặc Date ───────────────
+    function fmtTime(val) {
+      if (!val) return '--:--';
+      // Nếu là chuỗi dạng '07:00:00'
+      if (typeof val === 'string' && val.includes(':')) return val.substring(0, 5);
+      // Nếu là ISO datetime
+      const d = new Date(val);
+      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     }
 
-    /* ===== Render trạng thái ca làm hôm nay ===== */
+    // ─── Load dữ liệu từ API ─────────────────────────
+    async function loadHomNay() {
+      const token = localStorage.getItem('token');
+      try {
+        const res  = await fetch(`${API}/chamcong/homnay`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Lỗi tải dữ liệu');
+        const data = await res.json();
+
+        // Xác định trạng thái
+        if (!data.caHomNay) {
+          shiftState.status = 'no-shift'; // không có ca hôm nay
+        } else if (!data.chamCong || !data.chamCong.checkin) {
+          shiftState.status = 'pending';
+        } else if (data.chamCong.checkin && !data.chamCong.checkout) {
+          shiftState.status = 'in';
+        } else {
+          shiftState.status = 'done';
+        }
+
+        shiftState.caHomNay = data.caHomNay;
+        shiftState.chamCong = data.chamCong;
+
+        // Thống kê tháng
+        const tk = data.thongKe;
+        document.getElementById('stat-worked-days').textContent  = tk.soNgayLam;
+        document.getElementById('stat-expected-days').textContent = `/ ${tk.soNgayDuKien} ngày dự kiến`;
+        document.getElementById('stat-total-hours').textContent  = tk.tongGioLam;
+        document.getElementById('stat-late-count').textContent   = tk.soLanDiMuon;
+
+        renderShiftState();
+      } catch (err) {
+        console.error(err);
+        showToast('Không thể tải dữ liệu chấm công', 'error');
+      }
+    }
+
+    // ─── Render giao diện theo trạng thái ────────────
     function renderShiftState() {
-      const { shift, checkIn, checkOut, lateMinutes, status } = shiftState;
+      const { status, caHomNay, chamCong } = shiftState;
+      const btn     = document.getElementById('btn-shift-action');
+      const badge   = document.getElementById('shift-status-badge');
+
+      // Nếu không có ca hôm nay
+      if (status === 'no-shift') {
+        document.getElementById('shift-name').textContent  = 'Không có ca';
+        document.getElementById('shift-start').textContent = '--:--';
+        document.getElementById('shift-end').textContent   = '--:--';
+        badge.className   = 'badge badge-gray';
+        badge.textContent = 'Không có ca hôm nay';
+        btn.textContent   = 'Không có ca làm hôm nay';
+        btn.disabled      = true;
+        return;
+      }
 
       // Thông tin ca
-      document.getElementById('shift-name').textContent  = shift.name;
-      document.getElementById('shift-start').textContent = shift.start;
-      document.getElementById('shift-end').textContent   = shift.end;
+      document.getElementById('shift-name').textContent  = caHomNay.tenca;
+      document.getElementById('shift-start').textContent = fmtTime(caHomNay.batdau);
+      document.getElementById('shift-end').textContent   = fmtTime(caHomNay.ketthuc);
+      document.getElementById('tl-checkout-time').textContent = fmtTime(caHomNay.ketthuc);
 
-      // Thanh tiến trình
-      document.getElementById('tl-checkin-time').textContent  = checkIn || '--:--';
-      document.getElementById('tl-checkout-time').textContent = checkOut || shift.end;
-
-      const badge      = document.getElementById('shift-status-badge');
-      const btn        = document.getElementById('btn-shift-action');
-      const ciBadge    = document.getElementById('ci-status-badge');
-      const ciTimeEl   = document.getElementById('ci-time-value');
-      const coContent  = document.getElementById('co-content');
-      const dotCheckin = document.getElementById('tl-dot-checkin');
-      const dotCurrent = document.getElementById('tl-dot-current');
-      const dotCheckout = document.getElementById('tl-dot-checkout');
-      const lineLeft   = document.getElementById('tl-line-left');
-      const lineRight  = document.getElementById('tl-line-right');
-      const curLabel   = document.getElementById('tl-current-label');
-      const curSub     = document.getElementById('tl-current-sub');
-
-      ciTimeEl.textContent = checkIn || '--:--';
-
-      // Vị trí GPS lúc check-in
-      const ciLocationEl = document.getElementById('ci-location');
-      ciLocationEl.textContent = shiftState.checkInLocation
-        ? `📍 ${shiftState.checkInLocation.lat.toFixed(5)}, ${shiftState.checkInLocation.lng.toFixed(5)}`
-        : '';
+      const dotCI  = document.getElementById('tl-dot-checkin');
+      const dotCur = document.getElementById('tl-dot-current');
+      const dotCO  = document.getElementById('tl-dot-checkout');
+      const lineL  = document.getElementById('tl-line-left');
+      const lineR  = document.getElementById('tl-line-right');
+      const curLbl = document.getElementById('tl-current-label');
+      const curSub = document.getElementById('tl-current-sub');
+      const ciTime = document.getElementById('ci-time-value');
+      const ciBadge= document.getElementById('ci-status-badge');
+      const coEl   = document.getElementById('co-content');
 
       if (status === 'pending') {
-        // ----- Chưa bắt đầu ca (chưa check-in) -----
         badge.className = 'badge badge-gray';
         badge.textContent = 'Chưa check-in';
-
-        ciBadge.className = 'badge badge-gray';
-        ciBadge.textContent = 'Chưa check-in';
-
-        dotCheckin.style.background = 'var(--surface)';
-        dotCheckin.style.border = '2px solid var(--border-strong)';
-        lineLeft.style.background = 'var(--border)';
-
-        curLabel.textContent = 'Chưa bắt đầu';
-        curLabel.style.color = 'var(--ink-muted)';
+        dotCI.style.cssText  = 'width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--border-strong);';
+        lineL.style.background = 'var(--border)';
+        curLbl.textContent = 'Chưa bắt đầu';
+        curLbl.style.color = 'var(--ink-muted)';
         curSub.textContent = '';
-
-        coContent.innerHTML = `
-          <div class="stat-value">--:--</div>
-          <span class="badge badge-gray">Chưa check-out</span>`;
-
-        btn.textContent = `Check-in ${shift.name.toLowerCase()}`;
-        btn.disabled = false;
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-primary');
+        ciTime.textContent = '--:--';
+        ciBadge.className  = 'badge badge-gray';
+        ciBadge.textContent= 'Chưa check-in';
+        coEl.innerHTML = `<div class="stat-value">--:--</div><span class="badge badge-gray">Chưa check-out</span>`;
+        btn.textContent = `Check-in ${caHomNay.tenca.toLowerCase()}`;
+        btn.disabled    = false;
+        btn.className   = 'btn btn-primary';
+        document.getElementById('tl-checkin-time').textContent = '--:--';
 
       } else if (status === 'in') {
-        // ----- Đang trong ca -----
+        const late = chamCong.trangthaicheckin === 1;
         badge.className = 'badge badge-green';
         badge.textContent = 'Đang trong ca';
-
-        // Badge trạng thái check-in (đúng giờ / muộn)
-        if (lateMinutes > 0) {
-          ciBadge.className = 'badge badge-amber';
-          ciBadge.textContent = `⚠ Muộn ${lateMinutes} phút`;
+        dotCI.style.cssText  = 'width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;';
+        lineL.style.background = 'var(--accent)';
+        curLbl.textContent = 'Đang làm';
+        curLbl.style.color = 'var(--accent)';
+        curSub.textContent = 'Hiện tại';
+        const ciTimeStr = fmtTime(chamCong.checkin);
+        ciTime.textContent = ciTimeStr;
+        document.getElementById('tl-checkin-time').textContent = ciTimeStr;
+        ciBadge.className   = late ? 'badge badge-amber' : 'badge badge-green';
+        // Tính phút muộn từ dữ liệu thật
+        if (late) {
+          const bdDate = new Date(); const [h,m] = caHomNay.batdau.split(':').map(Number);
+          bdDate.setHours(h,m,0,0);
+          const ciDate = new Date(chamCong.checkin);
+          const phut = Math.floor((ciDate - bdDate) / 60000);
+          ciBadge.textContent = `⚠ Muộn ${phut} phút`;
         } else {
-          ciBadge.className = 'badge badge-green';
           ciBadge.textContent = 'Đúng giờ';
         }
+        coEl.innerHTML = `<div class="stat-value">--:--</div><span class="badge badge-gray">Chưa check-out</span>`;
+        btn.textContent = `Check-out ${caHomNay.tenca.toLowerCase()}`;
+        btn.disabled    = false;
+        btn.className   = 'btn btn-primary';
 
-        dotCheckin.style.background = 'var(--accent)';
-        dotCheckin.style.border = 'none';
-        lineLeft.style.background = 'var(--accent)';
-
-        curLabel.textContent = 'Đang làm';
-        curLabel.style.color = 'var(--accent)';
-        curSub.textContent = 'Hiện tại';
-
-        coContent.innerHTML = `
-          <div class="stat-value">--:--</div>
-          <span class="badge badge-gray">Chưa check-out</span>`;
-
-        btn.textContent = `Check-out ${shift.name.toLowerCase()}`;
-        btn.disabled = false;
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-primary');
-
-      } else {
-        // ----- Đã hoàn thành ca -----
+      } else { // done
+        const late  = chamCong.trangthaicheckin  === 1;
+        const early = chamCong.trangthaicheckout === 1;
         badge.className = 'badge badge-blue';
         badge.textContent = 'Đã hoàn thành';
+        dotCI.style.cssText   = 'width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;';
+        dotCO.style.cssText   = 'width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;';
+        dotCur.style.cssText  = 'width:12px;height:12px;border-radius:50%;background:var(--ink-muted);border:none;';
+        lineL.style.background = 'var(--accent)';
+        lineR.style.background = 'var(--accent)';
+        curLbl.textContent = 'Hoàn thành';
+        curLbl.style.color = 'var(--ink-muted)';
+        curSub.textContent = '';
+        const ciTimeStr = fmtTime(chamCong.checkin);
+        const coTimeStr = fmtTime(chamCong.checkout);
+        ciTime.textContent = ciTimeStr;
+        document.getElementById('tl-checkin-time').textContent  = ciTimeStr;
+        document.getElementById('tl-checkout-time').textContent = coTimeStr;
+        ciBadge.className   = late  ? 'badge badge-amber' : 'badge badge-green';
+        ciBadge.textContent = late  ? '⚠ Muộn' : 'Đúng giờ';
+        coEl.innerHTML = `
+          <div class="stat-value" style="color:var(--accent);">${coTimeStr}</div>
+          <span class="badge ${early ? 'badge-amber' : 'badge-green'}">${early ? '⚠ Về sớm' : 'Đúng giờ'}</span>`;
+        btn.textContent = 'Đã hoàn thành ca';
+        btn.disabled    = true;
+        btn.className   = 'btn btn-success';
+      }
+    }
 
-        // Badge trạng thái check-in (đúng giờ / muộn)
-        if (lateMinutes > 0) {
-          ciBadge.className = 'badge badge-amber';
-          ciBadge.textContent = `⚠ Muộn ${lateMinutes} phút`;
-        } else {
-          ciBadge.className = 'badge badge-green';
-          ciBadge.textContent = 'Đúng giờ';
+    // ─── Gọi API check-in / check-out ────────────────
+    async function handleShiftAction(coords) {
+      const token    = localStorage.getItem('token');
+      const endpoint = shiftState.status === 'pending' ? 'checkin' : 'checkout';
+
+      try {
+        const res = await fetch(`${API}/chamcong/${endpoint}`, {
+          method:  'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:  `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            latitude:  coords?.lat  || null,
+            longitude: coords?.lng  || null
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.message || 'Có lỗi xảy ra', 'error');
+          return;
         }
 
-        dotCheckin.style.background = 'var(--accent)';
-        dotCheckin.style.border = 'none';
-        lineLeft.style.background = 'var(--accent)';
+        showToast(data.message, 'success');
+        // Reload lại dữ liệu mới nhất từ server
+        await loadHomNay();
 
-        curLabel.textContent = 'Hoàn thành';
-        curLabel.style.color = 'var(--ink-muted)';
-        curSub.textContent = '';
-
-        // Nối thanh tiến trình + tô điểm check-out
-        lineRight.style.background = 'var(--accent)';
-        dotCurrent.style.background = 'var(--ink-muted)';
-        dotCheckout.style.background = 'var(--accent)';
-        dotCheckout.style.border = 'none';
-
-        coContent.innerHTML = `
-          <div class="stat-value" style="color: var(--accent);">${checkOut}</div>
-          <span class="badge badge-green">Đã check-out</span>
-          ${shiftState.checkOutLocation
-            ? `<div class="text-sm text-muted" style="margin-top: 6px;">📍 ${shiftState.checkOutLocation.lat.toFixed(5)}, ${shiftState.checkOutLocation.lng.toFixed(5)}</div>`
-            : ''}`;
-
-        btn.textContent = 'Đã hoàn thành ca';
-        btn.disabled = true;
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-success');
+      } catch (err) {
+        showToast('Không thể kết nối server', 'error');
       }
     }
 
-    /* ===== Xử lý nút Check-in / Check-out =====
-       TODO Giai đoạn 3: gọi apiFetch('/chamcong/check-in' | '/check-out', 'POST',
-       { lat, lng }) tại đây thay cho việc cập nhật state cục bộ. */
-    function handleShiftAction(coords) {
-      const now = new Date();
-      const hm = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-
-      if (shiftState.status === 'pending') {
-        // Check-in
-        shiftState.status = 'in';
-        shiftState.checkIn = hm;
-        shiftState.checkInLocation = coords || null;
-        renderShiftState();
-        showToast(`Check-in thành công lúc ${hm}!`);
-      } else if (shiftState.status === 'in') {
-        // Check-out
-        shiftState.status = 'done';
-        shiftState.checkOut = hm;
-        shiftState.checkOutLocation = coords || null;
-        renderShiftState();
-        showToast(`Check-out thành công lúc ${hm}!`);
-      }
-    }
-
-    /* ===================================================================
-       MODAL XÁC NHẬN VỊ TRÍ GPS (Leaflet + OpenStreetMap)
-       - Bấm nút Check-in/Check-out -> mở modal -> lấy GPS -> hiển thị bản đồ
-       - Bấm "Xác nhận" trong modal -> mới thực sự check-in/check-out
-    =================================================================== */
-    let pendingGpsCoords = null;
-    let gpsMapInstance = null;
-
+    // ─── Modal GPS ────────────────────────────────────
     function openGpsModal() {
-      if (shiftState.status === 'done') return; // đã hoàn thành ca, không cho bấm nữa
-
+      if (shiftState.status === 'done' || shiftState.status === 'no-shift') return;
       document.getElementById('gps-action-label').textContent =
         shiftState.status === 'pending' ? 'Check-in' : 'Check-out';
       document.getElementById('gps-status').textContent = 'Đang lấy vị trí hiện tại...';
@@ -378,8 +341,7 @@
       openModal('gps-modal');
 
       if (!navigator.geolocation) {
-        document.getElementById('gps-status').textContent =
-          '⚠ Thiết bị/trình duyệt không hỗ trợ định vị GPS.';
+        document.getElementById('gps-status').textContent = '⚠ Thiết bị không hỗ trợ GPS.';
         return;
       }
 
@@ -387,17 +349,15 @@
         pos => {
           const { latitude, longitude, accuracy } = pos.coords;
           pendingGpsCoords = { lat: latitude, lng: longitude };
-
-          document.getElementById('gps-status').textContent = '✅ Đã xác định được vị trí hiện tại';
+          document.getElementById('gps-status').textContent = '✅ Đã xác định được vị trí';
           document.getElementById('gps-coords').textContent =
-            `Toạ độ: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (độ chính xác ~${Math.round(accuracy)}m)`;
-
+            `Toạ độ: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (±${Math.round(accuracy)}m)`;
           renderGpsMap(latitude, longitude);
           document.getElementById('gps-confirm-btn').disabled = false;
         },
         err => {
           document.getElementById('gps-status').textContent =
-            '⚠ Không thể lấy vị trí: ' + (err.message || 'Vui lòng cho phép truy cập vị trí của trình duyệt.');
+            '⚠ Không thể lấy vị trí: ' + err.message;
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
@@ -405,25 +365,15 @@
 
     function renderGpsMap(lat, lng) {
       const mapEl = document.getElementById('gps-map');
-
-      // Hủy map cũ nếu modal được mở lại nhiều lần
-      if (gpsMapInstance) {
-        gpsMapInstance.remove();
-        gpsMapInstance = null;
-      }
+      if (gpsMapInstance) { gpsMapInstance.remove(); gpsMapInstance = null; }
       mapEl.innerHTML = '';
-
       gpsMapInstance = L.map(mapEl, { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(gpsMapInstance);
       L.marker([lat, lng]).addTo(gpsMapInstance);
-
-      // Modal vừa hiện ra -> map cần invalidateSize để vẽ đúng kích thước
       setTimeout(() => gpsMapInstance && gpsMapInstance.invalidateSize(), 150);
     }
 
-    function closeGpsModal() {
-      closeModal('gps-modal');
-    }
+    function closeGpsModal() { closeModal('gps-modal'); }
 
     function confirmGpsAction() {
       if (!pendingGpsCoords) return;
@@ -431,6 +381,12 @@
       closeGpsModal();
       handleShiftAction(coords);
     }
+
+    // ─── Khởi động ────────────────────────────────────
+    initLayout(['nhanvien']).then(user => {
+      if (!user) return;
+      loadHomNay();
+    });
   </script>
 </body>
 </html>
