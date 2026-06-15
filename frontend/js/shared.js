@@ -178,20 +178,7 @@ function renderHeader(role, user) {
     <button class="header-menu-btn" onclick="toggleMobileSidebar()">☰</button>
     <div class="header-title">${title}</div>
     <div class="header-right">
-      <div class="notif-wrap">
-        <button class="notif-btn" onclick="toggleDropdown('notif-dropdown')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-           <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-         </svg>
-  ${notifCount > 0 ? `<span class="notif-badge" id="notif-count">${notifCount}</span>` : ''}
-</button>
-        <div class="notif-dropdown" id="notif-dropdown">
-          <div class="notif-header"><span>Thông báo</span></div>
-          <div class="notif-list" id="notif-list"></div>
-          <div class="notif-footer">Xem tất cả</div>
-        </div>
-      </div>
+      
       <!-- Avatar: bấm vào để xem thông tin cá nhân + đăng xuất -->
       <div class="notif-wrap">
         <div class="header-avatar" title="${user?.hoten || ''}" onclick="toggleDropdown('user-dropdown')">${initials}</div>
